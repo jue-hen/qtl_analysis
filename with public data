@@ -27,7 +27,7 @@ dim(gene.info)
 ##############
 library(biomaRt)
 
-ensembl=useMart("ensembl")
+#ensembl=useMart("ensembl")
 listDatasets(ensembl)
 # 选择使用的数据集
 ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl",
