@@ -1,0 +1,131 @@
+library(GEOquery)
+library(grid)
+library(genomation)
+library(GenomicRanges)
+
+gset <- getGEO("GSE56580",GSEMatrix=T,AnnotGPL=T, destdir = "./eQTM_test/")
+exp=data.frame(exprs(gset[[1]]))
+
+GPL <- gset[[1]]@annotation
+GPL
+gpl <- getGEO(GPL)
+colnames(Table(gpl))
+head(Table(gpl)[,c(1,10,13)])
+annotation <- Table(gpl)[,c(1,10,13)]
+annotation <- na.omit(annotation)
+
+# library(readr)
+# annotation <- read.csv("GPL10558-50081.csv")
+
+annotation=annotation[match(rownames(exp),annotation[,1]),]
+table(is.na(annotation$ID))
+gene.info=annotation
+dim(gene.info)
+head(gene.info)
+gene.info <- na.omit(gene.info)
+dim(gene.info)
+##############
+library(biomaRt)
+
+ensembl=useMart("ensembl")
+listDatasets(ensembl)
+# 选择使用的数据集
+ensembl <- useMart("ensembl", dataset="hsapiens_gene_ensembl",
+                   host="https://grch37.ensembl.org")
+filter <- listFilters(ensembl)
+head(filter)
+# 查看可供置换注释的标签
+attributes <- listAttributes(ensembl)
+head(attributes)
+
+#########
+gene_trans <- getBM(attributes=c("ensembl_gene_id",
+                                 "entrezgene_id",
+                                 "hgnc_symbol",
+                                 "chromosome_name",
+                                 "start_position",
+                                 "end_position"),
+                    filters="entrezgene_id",
+                    values=gene.info$Entrez_Gene_ID,
+                    mart=ensembl)
+head(gene_trans)
+table(gene_trans$entrezgene_id %in% gene.info$Entrez_Gene_ID)
+
+gene.info=gene.info[match(gene_trans$entrezgene_id,gene.info$Entrez_Gene_ID),]
+
+dim(gene_trans[!is.na(gene_trans$entrezgene_id),])
+table(gene_trans$entrezgene_id == gene.info$Entrez_Gene_ID)
+gene_trans$ID=gene.info$ID
+
+gene.bed=gene_trans[,c(4:6,1:3,7)]
+gene.bed=gene.bed[which(!is.na(gene.bed$entrezgene_id)),]
+#gene.bed$chromosome_name=paste("chr",gene.bed$chromosome_name,sep="")
+dim(gene.bed)
+colnames(gene.bed)[1:3]=c("chrom","start","end")
+gene.bed=as(gene.bed, "GRanges")
+############
+meth=read_table("./eQTM_test/GSE56581_methylome_normalized.txt")
+meth1=meth[,c(1,seq(2,ncol(meth),2))]
+#colnames(meth1)[1]="ID"
+dim(meth1)
+
+mset <- getGEO("GSE56581",GSEMatrix=T,AnnotGPL=T, destdir = "eQTM_test/")
+sample=colnames(data.frame(exprs(mset[[1]])))
+
+#meth <- data.frame(exprs(mset[[1]]))
+colnames(meth1)=c("ID",sample)
+meth1$ID=gsub("\"","",meth1$ID)
+## annotate 450K 
+#anno=read.table("GPL13534-11288.txt",sep="\t",header = T)
+anno=read.csv("./eQTM_test/GPL13534_HumanMethylation450_15017482_v.1.1.csv", skip = 7, header = T)
+colnames(anno)
+cpg.anno=anno[,c(12,13,13,1)]
+cpg.anno=cpg.anno[match(meth1$ID,cpg.anno$IlmnID),]
+colnames(cpg.anno)[1:3]=c("chrom","start","end")
+cpg.anno=na.omit(cpg.anno)
+cpg.bed=as(cpg.anno, "GRanges")
+#######
+
+
+library(foreach)
+library(iterators)
+library(parallel)
+library(doParallel)
+
+#cl <- makeCluster(15)
+#clusterExport(cl,c("gexp"))
+#ps = parApply(cl,cpgs.meth,1,corr)
+#stopCluster(cl)
+
+cal_res <- function(k){
+  res=data.frame()
+  p.thres=0.01
+  g=gene.bed$ID[k]
+  gb=gene.bed[k,]
+  gexp=as.numeric(exp[rownames(exp)==g,])
+  cpgs.overlapped=subsetByOverlaps(cpg.bed,gb,maxgap = 1000000)
+  #cpgs.overlapped=cpg.bed[queryHits(findOverlaps(cpg.bed,gb,maxgap = 1000000)),]
+  
+  cpgs.meth=meth1[meth1$ID %in% cpgs.overlapped$IlmnID,]
+  #p=apply(cpgs.meth, 1, function(x) cor.test(as.numeric(x[2:ncol(cpgs.meth)]),
+  #                                           gexp,method = "spearman")$p.value)
+  
+  if(nrow(cpgs.meth)==0) { return(res) }
+  
+  ps=apply(cpgs.meth,1,function(x) cor.test(as.numeric(x[2:length(x)]),gexp,method = "spearman")$p.value)
+  print(paste("#############:",k))
+  #if(k %% 1000==0){ print(paste("#############:",k)) }
+  if(min(ps)>p.thres) { return(res) }
+  
+  cis.cpgs=data.frame(Ensmbl=gb$ensembl_gene_id,Symbol=gb$hgnc_symbol,
+                      cpgs=cpgs.meth$ID[which(ps<p.thres)],p=ps[which(ps<p.thres)])
+  res=rbind(res,cis.cpgs)
+  res
+}
+
+Sys.time()
+cl <- makeCluster(15)
+clusterExport(cl,c("exp","gene.bed","cpg.bed","meth1","cal_res"))
+ps = parLapply(cl,1:length(gene.bed),cal_res)
+stopCluster(cl)
+Sys.time()
