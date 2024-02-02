@@ -1,0 +1,34 @@
+library(sva)
+##expression
+#acute
+exp_18=read.table("../gene_expression/HA2018.acute_scaled.sleuth.norm_tpm.txt", header=T,row.names=1)
+exp_19=read.table("../gene_expression/HA2019.acute_scaled.sleuth.norm_tpm.txt", header=T,row.names=1)
+ind <- intersect(rownames(exp_18),rownames(exp_19))
+dat <- cbind(exp_18[ind,],exp_19[ind,])
+batch <- c(rep("0",ncol(dat)))
+batch[grep("^B19",colnames(dat))] <- 1
+combat_dat <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+combat_dat=cbind(genes=rownames(dat),dat)
+write.table(combat_dat,"./HA18_19.acute.gene.expression.batch_corrected.txt", quote=F,sep="\t",row.names=F)
+
+#baseline
+exp_18=read.table("../gene_expression/HA2018.baseline_scaled.sleuth.norm_tpm.txt", header=T,row.names=1)
+exp_19=read.table("../gene_expression/HA2019.baseline_scaled.sleuth.norm_tpm.txt", header=T,row.names=1)
+ind <- intersect(rownames(exp_18),rownames(exp_19))
+dat <- cbind(exp_18[ind,],exp_19[ind,])
+batch <- c(rep("0",ncol(dat)))
+batch[grep("^A19",colnames(dat))] <- 1
+combat_dat <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+combat_dat=cbind(genes=rownames(dat),dat)
+write.table(combat_dat,"./HA18_19.baseline.gene.expression.batch_corrected.txt", quote=F,sep="\t",row.names=F)
+
+##chronic
+exp_18=read.table("../gene_expression/HA2018.chronic_scaled.sleuth.norm_tpm.txt", header=T,row.names=1)
+exp_19=read.table("../gene_expression/HA2019.chronic_scaled.sleuth.norm_tpm.txt", header=T,row.names=1)
+ind <- intersect(rownames(exp_18),rownames(exp_19))
+dat <- cbind(exp_18[ind,],exp_19[ind,])
+batch <- c(rep("0",ncol(dat)))
+batch[grep("^C19",colnames(dat))] <- 1
+combat_dat <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+combat_dat=cbind(genes=rownames(dat),dat)
+write.table(combat_dat,"./HA18_19.chronic.gene.expression.batch_corrected.txt", quote=F,sep="\t",row.names=F)
