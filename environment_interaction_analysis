@@ -1,0 +1,1082 @@
+##eqtl
+##acute*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_baseline.cis.eqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_acute.cis.eqtl.txt",
+                    header = T, sep = "\t")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_chronic.cis.eqtl.txt",
+                      header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+acute_baseline <- setdiff(acute$snp_gene,baseline$snp_gene)
+
+acute_sub <- acute[which(acute$snp_gene %in% acute_baseline),]
+snps <- acute_sub$snps
+gene <- acute_sub$gene
+
+##snp info
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(acute_snp), colnames(baseline_snp))
+length(idx_peop)
+
+acute_snp_sub <-as.data.frame(t(acute_snp[ snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(1,nrow(acute_snp_sub))), acute_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_acute_baseline <- rbind(baseline_snp_sub, acute_snp_sub)
+
+##expression info
+acute_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.scaled.gene_expression.txt",
+                               header = T, row.names = 1)
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[gene, acute_peop]))
+
+baseline_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.scaled.gene_expression.txt",header = T, sep="\t", row.names = 1)
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[gene, baseline_peop]))
+
+expression_acute_baseline <- rbind(baseline_expression_sub, acute_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_acute_baseline, expression_acute_baseline)
+write.table(dat,"./combine_result/interaction_analysis/normal/HA18+19_acute_vs_baseline.cis.gene_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- acute_baseline
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-gene","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+    print(i)
+    pp <- strsplit(pair[i],"[*]")[[1]]
+    model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+    result[i,1] <- pair[i]
+    result[i,2] <- model$coefficients[[4]] #interaction b 值
+    result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+    result[i,4] <- summary(model)$adj.r.squared #R2
+    fvalue <- summary(model)$fstatistic
+    result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/normal/HA18+19_acute_vs_baseline.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+##chronic*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_baseline.cis.eqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_chronic.cis.eqtl.txt",
+                    header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_baseline <- setdiff(chronic$snp_gene,baseline$snp_gene)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_baseline),]
+snps <- chronic_sub$snps
+gene <- chronic_sub$gene
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(baseline_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_chronic_baseline <- rbind(baseline_snp_sub, chronic_snp_sub)
+
+##expression info
+chronic_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.scaled.gene_expression.txt",
+                               header = T, row.names = 1)
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[gene, chronic_peop]))
+
+baseline_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.scaled.gene_expression.txt",header = T, sep="\t", row.names = 1)
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[gene, baseline_peop]))
+
+expression_chronic_baseline <- rbind(baseline_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_baseline, expression_chronic_baseline)
+write.table(dat,"./combine_result/interaction_analysis/normal/HA18+19_chronic_vs_baseline.cis.gene_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- chronic_baseline
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-gene","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/normal/HA18+19_chronic_vs_baseline.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##chronic*acute
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_acute.cis.eqtl.txt",
+                       header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_chronic.cis.eqtl.txt",
+                      header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_acute <- setdiff(chronic$snp_gene,acute$snp_gene)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_acute),]
+snps <- chronic_sub$snps
+gene <- chronic_sub$gene
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                          header = T, sep = "\t", row.names = 1)
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(acute_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+acute_snp_sub <- as.data.frame(t(acute_snp[snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(0,nrow(acute_snp_sub))), acute_snp_sub)
+
+snp_chronic_acute <- rbind(acute_snp_sub, chronic_snp_sub)
+
+##expression info
+chronic_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.scaled.gene_expression.txt",
+                                 header = T, row.names = 1)
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[gene, chronic_peop]))
+
+acute_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.scaled.gene_expression.txt",header = T, sep="\t", row.names = 1)
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[gene, acute_peop]))
+
+expression_chronic_acute <- rbind(acute_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_acute, expression_chronic_acute)
+write.table(dat,"./combine_result/interaction_analysis/normal/HA18+19_chronic_vs_acute.cis.gene_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- chronic_acute
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-gene","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/normal/HA18+19_chronic_vs_acute.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##meQTL
+##acute*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_baseline.cis.mqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_acute.cis.mqtl.txt",
+                    header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+acute_baseline <- setdiff(acute$snp_gene,baseline$snp_gene)
+
+acute_sub <- acute[which(acute$snp_gene %in% acute_baseline),]
+snps <- acute_sub$snps
+length(snps)
+cpg <- acute_sub$gene
+length(cpg)
+
+##snp info
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(acute_snp), colnames(baseline_snp))
+length(idx_peop)
+
+acute_snp_sub <-as.data.frame(t(acute_snp[snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(1,nrow(acute_snp_sub))), acute_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_acute_baseline <- rbind(baseline_snp_sub, acute_snp_sub)
+
+##methylation info
+library(readr)
+acute_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.scaled.meth.beta.txt",
+                               col_names = T, delim = "\t")
+acute_expression <- as.data.frame(acute_expression)
+row.names(acute_expression) <- acute_expression[,1]
+acute_expression <- acute_expression[,-1]
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[cpg, acute_peop]))
+
+baseline_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.scaled.meth.beta.txt",col_names = T, delim = "\t")
+baseline_expression <- as.data.frame(baseline_expression)
+row.names(baseline_expression) <- baseline_expression[,1]
+baseline_expression <- baseline_expression[,-1]
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[cpg, baseline_peop]))
+
+expression_acute_baseline <- rbind(baseline_expression_sub, acute_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_acute_baseline, expression_acute_baseline)
+write.table(dat,"./combine_result/interaction_analysis/normal/meQTL/HA18+19_acute_vs_baseline.cis.methylation_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- acute_baseline
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-cpgs","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/normal/meQTL/HA18+19_acute_vs_baseline.cis.methylation_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##chronic*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_baseline.cis.mqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_chronic.cis.mqtl.txt",
+                    header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_baseline <- setdiff(chronic$snp_gene,baseline$snp_gene)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_baseline),]
+snps <- chronic_sub$snps
+length(snps)
+cpg <- chronic_sub$gene
+length(cpg)
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(baseline_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_chronic_baseline <- rbind(baseline_snp_sub, chronic_snp_sub)
+
+##methylation info
+library(readr)
+chronic_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.scaled.meth.beta.txt",
+                               col_names = T, delim = "\t")
+chronic_expression <- as.data.frame(chronic_expression)
+row.names(chronic_expression) <- chronic_expression[,1]
+chronic_expression <- chronic_expression[,-1]
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[cpg, chronic_peop]))
+
+baseline_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.scaled.meth.beta.txt",col_names = T, delim = "\t")
+baseline_expression <- as.data.frame(baseline_expression)
+row.names(baseline_expression) <- baseline_expression[,1]
+baseline_expression <- baseline_expression[,-1]
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[cpg, baseline_peop]))
+
+expression_chronic_baseline <- rbind(baseline_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_baseline, expression_chronic_baseline)
+write.table(dat,"./combine_result/interaction_analysis/normal/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- chronic_baseline
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-cpgs","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/normal/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##chronic*acute 
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_acute.cis.mqtl.txt",
+                       header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_chronic.cis.mqtl.txt",
+                      header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_acute <- setdiff(chronic$snp_gene,acute$snp_gene)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_acute),]
+snps <- chronic_sub$snps
+length(snps)
+cpg <- chronic_sub$gene
+length(cpg)
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                          header = T, sep = "\t", row.names = 1)
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(acute_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+acute_snp_sub <- as.data.frame(t(acute_snp[snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(0,nrow(acute_snp_sub))), acute_snp_sub)
+
+snp_chronic_acute <- rbind(acute_snp_sub, chronic_snp_sub)
+
+##methylation info
+library(readr)
+chronic_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.scaled.meth.beta.txt",
+                                 col_names = T, delim = "\t")
+chronic_expression <- as.data.frame(chronic_expression)
+row.names(chronic_expression) <- chronic_expression[,1]
+chronic_expression <- chronic_expression[,-1]
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[cpg, chronic_peop]))
+
+acute_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.scaled.meth.beta.txt",col_names = T, delim = "\t")
+acute_expression <- as.data.frame(acute_expression)
+row.names(acute_expression) <- acute_expression[,1]
+acute_expression <- acute_expression[,-1]
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[cpg, acute_peop]))
+
+expression_chronic_acute <- rbind(acute_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_acute, expression_chronic_acute)
+write.table(dat,"./combine_result/interaction_analysis/normal/meQTL/HA18+19_chronic_vs_acute.cis.methylation_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- chronic_acute
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-cpgs","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/normal/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+
+##加入协变量后
+##eqtl
+##acute*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_baseline.cis.eqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_acute.cis.eqtl.txt",
+                    header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_chronic.cis.eqtl.txt",
+                    header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+acute_baseline <- setdiff(acute$snp_gene,baseline$snp_gene)
+
+acute_sub <- acute[which(acute$snp_gene %in% acute_baseline),]
+
+snps <- unique(c(acute$snps, baseline$snps, chronic$snps))
+gene <- unique(c(baseline$gene, acute$gene, chronic$gene))
+"IGLV3-13" %in% gene
+
+##snp info
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(acute_snp), colnames(baseline_snp))
+length(idx_peop)
+
+acute_snp_sub <-as.data.frame(t(acute_snp[ snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(1,nrow(acute_snp_sub))), acute_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_acute_baseline <- rbind(baseline_snp_sub, acute_snp_sub)
+
+##expression info
+acute_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.scaled.gene_expression.txt",
+                               header = T, row.names = 1)
+acute_peop <- gsub("X20","B", idx_peop)
+table(gene %in% rownames(acute_expression))
+acute_expression_sub <- as.data.frame(t(acute_expression[gene, acute_peop]))
+table(gene %in% colnames(acute_expression_sub))
+
+baseline_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.scaled.gene_expression.txt",header = T, sep="\t", row.names = 1)
+baseline_peop <- gsub("X20","A", idx_peop)
+table(gene %in% rownames(baseline_expression))
+baseline_expression_sub <- as.data.frame(t(baseline_expression[gene, baseline_peop]))
+table(gene %in% colnames(baseline_expression_sub))
+
+expression_acute_baseline <- rbind(baseline_expression_sub, acute_expression_sub)
+table(gene %in% colnames(expression_acute_baseline))
+# "IGLV3-13" %in% colnames(dat)
+# "IGLV3-13" %in% gene
+# dd <- dat[,grep("^IGLV3", colnames(dat))]
+
+##gene and environment interaction analysis
+dat <- cbind(snp_acute_baseline, expression_acute_baseline)
+write.table(dat,"./combine_result/interaction_analysis/covariates/HA18+19_acute_vs_baseline.cis.gene_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+#dat <- read.table("./combine_result/interaction_analysis/covariates/HA18+19_acute_vs_baseline.cis.gene_env_interaction_dat.txt", header = T, sep = "\t")
+"IGLV3" %in% colnames(dat)
+
+pair <- unique(c(acute$snp_gene, baseline$snp_gene, chronic$snp_gene))
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+
+colnames(result) <- c("snps-gene","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  #pp <- gsub("-",".",pp)
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/covariates/HA18+19_acute_vs_baseline.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+write.table(result,"./combine_result/interaction_analysis/covariates/all_pair_in_three_period/HA18+19_acute_vs_baseline.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+##chronic*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_baseline.cis.eqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_chronic.cis.eqtl.txt",
+                      header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_baseline <- setdiff(chronic$snp_gene,baseline$snp_gene)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_baseline),]
+
+snps <- unique(c(chronic$snps, baseline$snps)) 
+gene <- unique(c(chronic$gene, baseline$gene))
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                          header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(baseline_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_chronic_baseline <- rbind(baseline_snp_sub, chronic_snp_sub)
+
+##expression info
+chronic_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.scaled.gene_expression.txt",
+                                 header = T, row.names = 1)
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[gene, chronic_peop]))
+
+baseline_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.scaled.gene_expression.txt",header = T, sep="\t", row.names = 1)
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[gene, baseline_peop]))
+
+expression_chronic_baseline <- rbind(baseline_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_baseline, expression_chronic_baseline)
+write.table(dat,"./combine_result/interaction_analysis/covariates/HA18+19_chronic_vs_baseline.cis.gene_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- unique(c(chronic$snp_gene, baseline$snp_gene))
+length(pair)
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-gene","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/covariates/HA18+19_chronic_vs_baseline.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+write.table(result,"./combine_result/interaction_analysis/covariates/all_pair_in_three_period/HA18+19_chronic_vs_baseline.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+##chronic*acute
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_acute.cis.eqtl.txt",
+                    header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/covariates/HA18_19_chronic.cis.eqtl.txt",
+                      header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_acute <- setdiff(chronic$snp_gene,acute$snp_gene)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_acute),]
+snps <- unique(c(chronic$snps, acute$snps))
+gene <- unique(c(chronic$gene, acute$gene))
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                          header = T, sep = "\t", row.names = 1)
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(acute_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+acute_snp_sub <- as.data.frame(t(acute_snp[snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(0,nrow(acute_snp_sub))), acute_snp_sub)
+
+snp_chronic_acute <- rbind(acute_snp_sub, chronic_snp_sub)
+
+##expression info
+chronic_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.scaled.gene_expression.txt",
+                                 header = T, row.names = 1)
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[gene, chronic_peop]))
+
+acute_expression <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.scaled.gene_expression.txt",header = T, sep="\t", row.names = 1)
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[gene, acute_peop]))
+
+expression_chronic_acute <- rbind(acute_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_acute, expression_chronic_acute)
+write.table(dat,"./combine_result/interaction_analysis/covariates/HA18+19_chronic_vs_acute.cis.gene_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- c(unique(chronic$snp_gene, acute$snp_gene))
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-gene","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/covariates/HA18+19_chronic_vs_acute.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+write.table(result,"./combine_result/interaction_analysis/covariates/all_pair_in_three_period/HA18+19_chronic_vs_acute.cis.gene_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+##meQTL
+##acute*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/covariates/HA18+19_combine_baseline.cis.mqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/covariates/HA18+19_combine_acute.cis.mqtl.txt",
+                    header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+acute_baseline <- setdiff(acute$snp_gene,baseline$snp_gene)
+length(acute_baseline)
+
+acute_sub <- acute[which(acute$snp_gene %in% acute_baseline),]
+snps <- unique(c(acute$snps, baseline$snps))
+length(snps)
+cpg <- unique(c(acute$gene, baseline$gene))
+length(cpg)
+
+##snp info
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(acute_snp), colnames(baseline_snp))
+length(idx_peop)
+
+acute_snp_sub <-as.data.frame(t(acute_snp[snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(1,nrow(acute_snp_sub))), acute_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_acute_baseline <- rbind(baseline_snp_sub, acute_snp_sub)
+
+##methylation info
+library(readr)
+acute_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.scaled.meth.beta.txt",
+                               col_names = T, delim = "\t")
+acute_expression <- as.data.frame(acute_expression)
+row.names(acute_expression) <- acute_expression[,1]
+acute_expression <- acute_expression[,-1]
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[cpg, acute_peop]))
+
+baseline_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.scaled.meth.beta.txt",col_names = T, delim = "\t")
+baseline_expression <- as.data.frame(baseline_expression)
+row.names(baseline_expression) <- baseline_expression[,1]
+baseline_expression <- baseline_expression[,-1]
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[cpg, baseline_peop]))
+
+expression_acute_baseline <- rbind(baseline_expression_sub, acute_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_acute_baseline, expression_acute_baseline)
+write.table(dat,"./combine_result/interaction_analysis/covariates/meQTL/HA18+19_acute_vs_baseline.cis.methylation_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+pair <- acute_baseline
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-cpgs","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/covariates/meQTL/HA18+19_acute_vs_baseline.cis.methylation_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##chronic*baseline
+baseline <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/covariates/HA18+19_combine_baseline.cis.mqtl.txt",
+                       header = T, sep = "\t")
+baseline$snp_gene <- paste(baseline$snps, baseline$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/covariates/HA18+19_combine_chronic.cis.mqtl.txt",
+                      header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_baseline <- setdiff(chronic$snp_gene,baseline$snp_gene)
+length(chronic_baseline)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_baseline),]
+snps <- unique(c(chronic$snps, baseline$snps))
+length(snps)
+cpg <- unique(c(chronic$gene, baseline$gene))
+length(cpg)
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                          header = T, sep = "\t", row.names = 1)
+baseline_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.snp.info.txt",
+                           header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(baseline_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+baseline_snp_sub <- as.data.frame(t(baseline_snp[snps, idx_peop]))
+baseline_snp_sub <- cbind(env=c(rep(0,nrow(baseline_snp_sub))), baseline_snp_sub)
+
+snp_chronic_baseline <- rbind(baseline_snp_sub, chronic_snp_sub)
+
+##methylation info
+library(readr)
+chronic_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.scaled.meth.beta.txt",
+                                 col_names = T, delim = "\t")
+chronic_expression <- as.data.frame(chronic_expression)
+row.names(chronic_expression) <- chronic_expression[,1]
+chronic_expression <- chronic_expression[,-1]
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[cpg, chronic_peop]))
+
+baseline_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.scaled.meth.beta.txt",col_names = T, delim = "\t")
+baseline_expression <- as.data.frame(baseline_expression)
+row.names(baseline_expression) <- baseline_expression[,1]
+baseline_expression <- baseline_expression[,-1]
+baseline_peop <- gsub("X20","A", idx_peop)
+baseline_expression_sub <- as.data.frame(t(baseline_expression[cpg, baseline_peop]))
+
+expression_chronic_baseline <- rbind(baseline_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_baseline, expression_chronic_baseline)
+write.table(dat,"./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+library(readr)
+dat <- read_delim("./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_dat.txt",
+                  col_names =  T, delim =  "\t")
+pair <- chronic_baseline
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-cpgs","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##chronic*acute 
+acute <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/covariates/HA18+19_combine_acute.cis.mqtl.txt",
+                    header = T, sep = "\t")
+acute$snp_gene <- paste(acute$snps, acute$gene, sep = "*")
+chronic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/covariates/HA18+19_combine_chronic.cis.mqtl.txt",
+                      header = T, sep = "\t")
+chronic$snp_gene <- paste(chronic$snps, chronic$gene, sep = "*")
+chronic_acute <- setdiff(chronic$snp_gene,acute$snp_gene)
+length(chronic_acute)
+
+chronic_sub <- chronic[which(chronic$snp_gene %in% chronic_acute),]
+snps <- unique(c(chronic$snps, acute$snps))
+length(snps)
+cpg <- unique(c(chronic$gene, acute$gene))
+length(cpg)
+
+##snp info
+chronic_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.snp.info.txt",
+                          header = T, sep = "\t", row.names = 1)
+acute_snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.snp.info.txt",
+                        header = T, sep = "\t", row.names = 1)
+idx_peop <- intersect(colnames(chronic_snp), colnames(acute_snp))
+length(idx_peop)
+
+chronic_snp_sub <-as.data.frame(t(chronic_snp[snps, idx_peop]))
+chronic_snp_sub <- cbind(env=c(rep(1,nrow(chronic_snp_sub))), chronic_snp_sub)
+
+acute_snp_sub <- as.data.frame(t(acute_snp[snps, idx_peop]))
+acute_snp_sub <- cbind(env=c(rep(0,nrow(acute_snp_sub))), acute_snp_sub)
+
+snp_chronic_acute <- rbind(acute_snp_sub, chronic_snp_sub)
+
+##methylation info
+library(readr)
+chronic_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.scaled.meth.beta.txt",
+                                 col_names = T, delim = "\t")
+chronic_expression <- as.data.frame(chronic_expression)
+row.names(chronic_expression) <- chronic_expression[,1]
+chronic_expression <- chronic_expression[,-1]
+chronic_peop <- gsub("X20","C", idx_peop)
+chronic_expression_sub <- as.data.frame(t(chronic_expression[cpg, chronic_peop]))
+
+acute_expression <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.scaled.meth.beta.txt",col_names = T, delim = "\t")
+acute_expression <- as.data.frame(acute_expression)
+row.names(acute_expression) <- acute_expression[,1]
+acute_expression <- acute_expression[,-1]
+acute_peop <- gsub("X20","B", idx_peop)
+acute_expression_sub <- as.data.frame(t(acute_expression[cpg, acute_peop]))
+
+expression_chronic_acute <- rbind(acute_expression_sub, chronic_expression_sub)
+
+##gene and environment interaction analysis
+dat <- cbind(snp_chronic_acute, expression_chronic_acute)
+write.table(dat,"./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_acute.cis.methylation_env_interaction_dat.txt",
+            row.names = F, quote = F, sep = "\t")
+library(readr)
+dat <- read_delim("./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_acute.cis.methylation_env_interaction_dat.txt",
+                  col_names = T, delim  = "\t")
+pair <- chronic_acute
+result <- data.frame(matrix(nrow = length(pair),ncol = 5))
+colnames(result) <- c("snps-cpgs","interaction_B","p1","adj.R2","p2")
+for (i in c(1:length(pair))){
+  print(i)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  model <- lm(substitute(y~x*env, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  result[i,1] <- pair[i]
+  result[i,2] <- model$coefficients[[4]] #interaction b 值
+  result[i,3] <- summary(model)$coefficients[,4][[4]] #p值
+  result[i,4] <- summary(model)$adj.r.squared #R2
+  fvalue <- summary(model)$fstatistic
+  result[i,5] <- 1-pf(fvalue[1], fvalue[2], fvalue[3]) #总p值
+}
+result <- result[order(result$p1),]
+write.table(result,"./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_acute.cis.methylation_env_interaction_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##plot
+##covarities
+##eQTL
+acute_baseline_inter <- read.table("./combine_result/interaction_analysis/covariates/HA18+19_acute_vs_baseline.cis.gene_env_interaction_result.txt", header = T,sep = "\t")
+range(acute_baseline_inter$interaction_B)
+p <- p.adjust(acute_baseline_inter$p1, method = "fdr")
+table(p<=0.05) ## 37
+table(acute_baseline_inter$p1 <= 0.05)  ## 188
+
+#p_plot <- p.adjust(p_plot, method = "fdr")
+p_plot <- acute_baseline_inter$p1
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_1 <- data.frame(type=c(rep("acute_baseline",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+chronic_baseline_inter <- read.table("./combine_result/interaction_analysis/covariates/HA18+19_chronic_vs_baseline.cis.gene_env_interaction_result.txt", header = T,sep = "\t")
+p_plot <- chronic_baseline_inter$p1
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_2 <- data.frame(type=c(rep("chronic_baseline",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+chronic_acute_inter <- read.table("./combine_result/interaction_analysis/covariates/HA18+19_chronic_vs_acute.cis.gene_env_interaction_result.txt", header = T,sep = "\t")
+p_plot <- chronic_acute_inter$p1
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_3 <- data.frame(type=c(rep("chronic_acute",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+pp <- rbind(p_dat_1, p_dat_2, p_dat_3)
+pp$type <- factor(pp$type, levels = c("acute_baseline","chronic_baseline","chronic_acute"))
+colnames(pp)
+
+
+ggplot(pp, aes(x=type, y=number,fill=range))+
+  theme_classic()+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(label=number),position = position_stack(vjust = 0.4),size=8)+
+  ggtitle("Distribution of p_value for interaction between environment and SNPs")+
+  labs(x="Group", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+
+##b值分布
+acute_baseline_sub <- acute_baseline_inter[which(acute_baseline_inter$p1 <= 0.05),]
+chronic_baseline_sub <- chronic_baseline_inter[which(chronic_baseline_inter$p1 <= 0.05),]
+chronic_acute_sub <- chronic_acute_inter[which(chronic_acute_inter$p1 <= 0.05),]
+tmp=c()
+#dat_process <- function(dd){
+dd=list(acute_baseline_sub, chronic_baseline_sub, chronic_acute_sub)
+for (dat in dd){
+  plot <- dat$interaction_B
+  p1 <- length(plot[which(plot >= -0.6 & plot < -0.3)])
+  p2 <- length(plot[which(plot>=-0.3 & plot<0)])
+  p3 <- length(plot[which(plot>=0 & plot<0.25)])
+  p4 <- length(plot[which(plot>=0.25 & plot<0.5)])
+  p5 <- length(plot[which(plot>=0.5 & plot<0.75)])
+  p6 <- length(plot[which(plot>=0.75 & plot<1)])
+  p7 <- length(plot[which(plot>=1 & plot<=1.5)])
+  tt <- c(p1,p2,p3,p4,p5,p6,p7)
+  tmp <- append(tmp,tt)
+}
+#}
+period <- c(rep(c("acute_baseline","chronic_baseline","chronic_acute"), each=7))
+range <- c(rep(c("[-0.6,0.3)","[-0.3,0)","[0,0.25)","[0.25,0.5)","[0.5,0.75)","[0.75,1)","[1, 1.5]"), 3))
+media_dat_plot <- data.frame(period, range, freq=tmp)
+media_dat_plot$period <- factor(media_dat_plot$period, levels = c("acute_baseline","chronic_baseline","chronic_acute"))
+media_dat_plot$range <- factor(media_dat_plot$range, levels = c("[-0.6,0.3)","[-0.3,0)","[0,0.25)","[0.25,0.5)","[0.5,0.75)","[0.75,1)","[1, 1.5]"))
+str(media_dat_plot)
+ggplot(media_dat_plot, aes(x=range, y=freq,fill=period))+
+  theme_bw()+
+  geom_bar(stat = "identity", position = "dodge", width = 0.8)+
+  geom_text(aes(label=freq), position = position_dodge(width = 0.8), size=7, vjust=-0.25)+
+  ggtitle("Distribution of scaled effect size for interaction between environment and SNPs")+
+  xlab("Group")+
+  ylab("Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18, face = "bold"),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+
+
+
+###meQTL
+acute_baseline_inter <- read.table("./combine_result/interaction_analysis/covariates/meQTL/HA18+19_acute_vs_baseline.cis.methylation_env_interaction_result.txt", header = T,sep = "\t")
+range(acute_baseline_inter$interaction_B)
+p <- p.adjust(acute_baseline_inter$p1, method = "fdr")
+table(p<=0.05) ## 37
+table(acute_baseline_inter$p1 <= 0.05)  ## 1603
+
+#p_plot <- p.adjust(p_plot, method = "fdr")
+p_plot <- acute_baseline_inter$p1
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_1 <- data.frame(type=c(rep("acute_baseline",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+chronic_baseline_inter <- read.table("./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_baseline.cis.methylation_env_interaction_result.txt", header = T,sep = "\t")
+p_plot <- chronic_baseline_inter$p1
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_2 <- data.frame(type=c(rep("chronic_baseline",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+chronic_acute_inter <- read.table("./combine_result/interaction_analysis/covariates/meQTL/HA18+19_chronic_vs_acute.cis.methylation_env_interaction_result.txt", header = T,sep = "\t")
+p_plot <- chronic_acute_inter$p1
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_3 <- data.frame(type=c(rep("chronic_acute",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+pp <- rbind(p_dat_1, p_dat_2, p_dat_3)
+pp$type <- factor(pp$type, levels = c("acute_baseline","chronic_baseline","chronic_acute"))
+colnames(pp)
+
+library(ggplot2)
+ggplot(pp, aes(x=type, y=number,fill=range))+
+  theme_classic()+
+  geom_bar(stat = "identity", position = "dodge",width = 0.5)+
+  geom_text(aes(label=number), position = position_dodge(width = 0.5), size=5, vjust=-0.25)+
+  ggtitle("Distribution of p_value for interaction between environment and SNPs")+
+  labs(x="Group", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+
+##b值分布
+acute_baseline_sub <- acute_baseline_inter[which(acute_baseline_inter$p1 <= 0.05),]
+chronic_baseline_sub <- chronic_baseline_inter[which(chronic_baseline_inter$p1 <= 0.05),]
+chronic_acute_sub <- chronic_acute_inter[which(chronic_acute_inter$p1 <= 0.05),]
+tmp=c()
+range(acute_baseline_sub$interaction_B)
+range(chronic_baseline_sub$interaction_B)
+range(chronic_acute_sub$interaction_B)
+#dat_process <- function(dd){
+dd=list(acute_baseline_sub, chronic_baseline_sub, chronic_acute_sub)
+for (dat in dd){
+  plot <- dat$interaction_B
+  p1 <- length(plot[which(plot >= -1.2 & plot < -0.8)])
+  p2 <- length(plot[which(plot>=-0.8 & plot< -0.4)])
+  p3 <- length(plot[which(plot>=-0.4 & plot<0)])
+  p4 <- length(plot[which(plot>=0 & plot<0.4)])
+  p5 <- length(plot[which(plot>=0.4 & plot<0.8)])
+  p6 <- length(plot[which(plot>=0.8 & plot<=1.2)])
+  tt <- c(p1,p2,p3,p4,p5,p6)
+  tmp <- append(tmp,tt)
+}
+#}
+period <- c(rep(c("acute_baseline","chronic_baseline","chronic_acute"), each=6))
+range <- c(rep(c("[-1.2,-0.8)","[-0.8,0.4)","[-0.4,0)","[0,0.4)","[0.4,0.8)","[0.8, 1.2]"), 3))
+media_dat_plot <- data.frame(period, range, freq=tmp)
+media_dat_plot$period <- factor(media_dat_plot$period, levels = c("acute_baseline","chronic_baseline","chronic_acute"))
+media_dat_plot$range <- factor(media_dat_plot$range, levels = c("[-1.2,-0.8)","[-0.8,0.4)","[-0.4,0)","[0,0.4)","[0.4,0.8)","[0.8, 1.2]"))
+str(media_dat_plot)
+ggplot(media_dat_plot, aes(x=range, y=freq,fill=period))+
+  theme_bw()+
+  geom_bar(stat = "identity", position = "dodge", width = 0.85)+
+  geom_text(aes(label=freq), position = position_dodge(width = 0.85), size=5, vjust=-0.25)+
+  ggtitle("Distribution of scaled effect size for interaction between environment and SNPs")+
+  xlab("Group")+
+  ylab("Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18, face = "bold"),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+dd <- rbind(acute_baseline_sub, chronic_baseline_sub, chronic_acute_sub)
+dd <- dd[which(abs(dd$interaction_B) > 0.8),]
