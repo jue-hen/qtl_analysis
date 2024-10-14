@@ -1,0 +1,701 @@
+##中介效应分析
+##acute_cis
+acute_cis_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_acute.cis.eqtl.txt", header = T)
+acute_cis_meqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_acute.cis.mqtl.txt", header = T)
+#colnames(acute_cis_meqtl)[2] <- "cpgs"
+
+library(stringr)
+cpgs_info <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/position_dat/cpg_pos_info_850K.txt", header = T, sep = "\t")
+cpgs_info$UCSC_RefGene_Name <- str_split(cpgs_info$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+acute_cpgs <- cpgs_info[which(cpgs_info$cpgs %in% unique(acute_cis_meqtl$gene)),]
+idx <- acute_cpgs[,c(1,5)]
+acute_cis_meqtl <- merge(acute_cis_meqtl, idx, by.x = "gene", by.y="cpgs", all=T)
+acute_cis_meqtl <- na.omit(acute_cis_meqtl)
+acute_cis_meqtl <- acute_cis_meqtl[which(acute_cis_meqtl$UCSC_RefGene_Name != ""),]
+
+acute_cis_eqtl$snp_gene <- paste(acute_cis_eqtl$snps, acute_cis_eqtl$gene, sep = "*")
+acute_cis_meqtl$snp_gene <- paste(acute_cis_meqtl$snps, acute_cis_meqtl$UCSC_RefGene_Name, sep = "*")
+
+acute_intersect_snp_gene <- intersect(acute_cis_eqtl$snp_gene, acute_cis_meqtl$snp_gene)
+acute_cis_eqtl_sub <- acute_cis_eqtl[which(acute_cis_eqtl$snp_gene %in% acute_intersect_snp_gene),]
+acute_cis_meqtl_sub <- acute_cis_meqtl[which(acute_cis_meqtl$snp_gene %in% acute_intersect_snp_gene),]
+
+# snp_gene_intersect <- intersect(acute_cis_eqtl_sub$snp_gene, acute_cis_meqtl_sub$snp_gene)
+# length(snp_gene_intersect)
+# acute_cis_eqtl_sub_s <- acute_cis_eqtl_sub[which(acute_cis_eqtl_sub$snp_gene %in% snp_gene_intersect),]
+# acute_cis_meqtl_sub_s <- acute_cis_meqtl_sub[which(acute_cis_meqtl_sub$snp_gene %in% snp_gene_intersect),]
+
+# table(table(acute_cis_eqtl_sub_s$gene))
+# table(acute_cis_meqtl_sub_s$UCSC_RefGene_Name)
+# 
+# table(acute_cis_eqtl_sub_s$snps)
+# table(acute_cis_meqtl_sub_s$snps)
+ss <- as.data.frame(table(acute_cis_eqtl_sub$snp_gene))
+ss <- ss[order(ss$Freq, decreasing = T),]
+sd <- as.data.frame(table(acute_cis_meqtl_sub$snp_gene))
+sd <- sd[order(sd$Freq, decreasing = T),]
+write.table(sd, "./combine_result/mediation_analysis/normal/HA18+19_acute.cis.snp_cpg_gene.statistic.txt", quote = F, row.names = F, sep = "\t")
+
+length(intersect(ss$Var1, sd$Var1))
+
+length(unique(acute_cis_eqtl_sub$gene))
+length(unique(acute_cis_eqtl_sub$snps))
+length(unique(acute_cis_meqtl_sub$gene))
+length(unique(acute_cis_meqtl_sub$snps))
+
+#snps位点， cpg位点， gene
+snps <- unique(c(acute_cis_eqtl_sub$snps,acute_cis_meqtl_sub$snps))
+gene <- unique(c(acute_cis_eqtl_sub$gene,acute_cis_meqtl_sub$UCSC_RefGene_Name))
+cpgs <- unique(acute_cis_meqtl_sub$gene,)
+
+acute_cis_meqtl_sub$snp_cpgs_gene <- paste(acute_cis_meqtl_sub$snps, acute_cis_meqtl_sub$gene, acute_cis_meqtl_sub$UCSC_RefGene_Name, sep = "*")
+write.table(acute_cis_meqtl_sub, "./combine_result/mediation_analysis/normal/HA18+19_acute.cis.snp_cpg_gene.txt",quote = F, row.names = F, sep = "\t")
+
+##中介效应例子
+b <- lm(job_seek~treat+econ_hard+sex+age, data=jobs)
+c <- lm(depress2~treat+job_seek+econ_hard+sex+age,data=jobs)
+contcont <- mediate(b,c,sims = 50, treat = "treat",mediator = "job_seek")
+contcont$z.avg #直接效应
+contcont$z.avg.p #p值
+contcont$d.avg #中介效应
+contcont$d.avg.p #p值
+contcont$tau.coef #总效应
+contcont$tau.p #p值
+contcont$n.avg #中介效应占比
+contcont$n.avg.p #p值
+
+#中介分析数据选择
+acute_expression_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.scaled.gene_expression.txt",header = T, sep = "\t")
+acute_snps_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_acute.snp.info.txt", header = T, sep = "\t")
+
+acute_snps_meqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.snp.info.txt", header = T, sep = "\t")
+
+library(readr)
+acute_methylation_meqtl <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_acute.scaled.meth.beta.txt", col_names = T, delim = "\t")
+length(intersect(colnames(acute_expression_eqtl), colnames(acute_methylation_meqtl)))
+idx_peo <- intersect(colnames(acute_expression_eqtl), colnames(acute_methylation_meqtl))
+length(grep("^B18",idx_peo))
+length(grep("^B19",idx_peo))
+
+acute_expression_sub <- cbind(gene=acute_expression_eqtl[,1], acute_expression_eqtl[,idx_peo])
+acute_methylation_sub <- cbind(cpgs=acute_methylation_meqtl[,1], acute_methylation_meqtl[,idx_peo])
+
+table(gene %in% acute_expression_sub$gene)
+table(cpgs %in% acute_methylation_sub$Cpgs)
+acute_expression <- acute_expression_sub[which(acute_expression_sub$gene %in% gene),]
+acute_methylation <- acute_methylation_sub[which(acute_methylation_sub$Cpgs %in% cpgs),]
+
+snp_idx <- gsub("B","X20",idx_peo)
+acute_snps_sub <- cbind(snps=acute_snps_eqtl[,1], acute_snps_eqtl[,snp_idx])
+acute_snps <- acute_snps_sub[which(acute_snps_sub$snps %in% snps),]
+colnames(acute_snps)[2:ncol(acute_snps)] <- gsub("X20","B",colnames(acute_snps)[2:ncol(acute_snps)])
+
+table(colnames(acute_snps)[2:ncol(acute_snps)] == colnames(acute_expression)[2:ncol(acute_expression)])
+table(colnames(acute_snps)[2:ncol(acute_snps)] == colnames(acute_methylation)[2:ncol(acute_methylation)])
+
+write.table(acute_expression,"./combine_result/mediation_analysis/normal/HA18+19_acute.cis.gene_expression.txt", row.names = F, quote = F, sep = "\t")
+write.table(acute_methylation,"./combine_result/mediation_analysis/normal/HA18+19_acute.cis.dna_methylation.txt", row.names = F, quote = F, sep = "\t")
+write.table(acute_snps,"./combine_result/mediation_analysis/normal/HA18+19_acute.cis.snp_info.txt", row.names = F, quote = F, sep = "\t")
+
+
+rownames(acute_snps) <- acute_snps[,1]
+acute_snps <- acute_snps[,-1]
+acute_snps <- as.data.frame(t(acute_snps))
+
+rownames(acute_expression) <- acute_expression[,1]
+acute_expression <- acute_expression[,-1]
+acute_expression <- as.data.frame(t(acute_expression))
+
+rownames(acute_methylation) <- acute_methylation[,1]
+acute_methylation <- acute_methylation[,-1]
+acute_methylation <- as.data.frame(t(acute_methylation))
+
+library(mediation)
+dat <- cbind(acute_snps, acute_methylation, acute_expression)
+pair <- acute_cis_meqtl_sub$snp_cpgs_gene
+table(gene %in% colnames(dat))
+# set.seed(100)
+# pp <- strsplit(pair[1],"-")[[1]]
+# fit.mediator <- lm(substitute(y~x, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+# summary(fit.mediator)
+# fit.dv <- lm(substitute(y~x+m, list(y=as.name(pp[3]), x=as.name(pp[1]), m=as.name(pp[2]))), data = dat)
+# summary(fit.dv)
+# res <- mediate(fit.mediator,fit.dv, sims = 1000,treat = pp[1],mediator = pp[2])
+# summary(res)
+
+acute_result <- data.frame(matrix(nrow = length(pair),ncol = 9))
+colnames(acute_result) <- c("snps-cpgs-gene","直接效应","p1","中介效应","p2",
+                            "总效应","p3","中介效应占比","p4")
+options(scipen = )
+for (i in c(1:length(pair))){
+  print(i)
+  set.seed(100)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  fit.mediator <- lm(substitute(y~x, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  fit.dv <- lm(substitute(y~x+m, list(y=as.name(pp[3]), x=as.name(pp[1]), m=as.name(pp[2]))), data = dat)
+  res <- mediate(fit.mediator,fit.dv, sims = 1000,treat = pp[1],mediator = pp[2])
+  acute_result[i,1] <- pair[i]
+  acute_result[i,2] <- res$z.avg #直接效应
+  acute_result[i,3] <- res$z.avg.p #p值
+  acute_result[i,4] <- res$d.avg #中介效应
+  acute_result[i,5] <- res$d.avg.p #p值
+  acute_result[i,6] <- res$tau.coef #总效应
+  acute_result[i,7] <- res$tau.p #p值
+  acute_result[i,8] <- res$n.avg #中介效应占比
+  acute_result[i,9] <- res$n.avg.p #p值
+} 
+acute_result <- acute_result[order(acute_result$中介效应占比, decreasing = T),]
+range(acute_result$p4)
+table(acute_result$p4 < 0.05)
+options(digits = 7, scipen = 1)
+acute_result$fdr <- p.adjust(acute_result$p4,method = "fdr")
+write.table(acute_result, "./combine_result/mediation_analysis/normal/HA18+19_acute.cis.mediation_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+res$z.avg #直接效应
+res$z.avg.p #p值
+res$d.avg #中介效应
+res$d.avg.p #p值
+res$tau.coef #总效应
+res$tau.p #p值
+res$n.avg #中介效应占比
+res$n.avg.p #p值
+summary(res)
+
+
+
+##chronic_cis
+chronic_cis_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_chronic.cis.eqtl.txt", header = T)
+chronic_cis_meqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_chronic.cis.mqtl.txt", header = T)
+#colnames(acute_cis_meqtl)[2] <- "cpgs"
+
+library(stringr)
+cpgs_info <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/position_dat/cpg_pos_info_850K.txt", header = T, sep = "\t")
+cpgs_info$UCSC_RefGene_Name <- str_split(cpgs_info$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+chronic_cpgs <- cpgs_info[which(cpgs_info$cpgs %in% unique(chronic_cis_meqtl$gene)),]
+idx <- chronic_cpgs[,c(1,5)]
+chronic_cis_meqtl <- merge(chronic_cis_meqtl, idx, by.x = "gene", by.y="cpgs", all=T)
+chronic_cis_meqtl <- na.omit(chronic_cis_meqtl)
+chronic_cis_meqtl <- chronic_cis_meqtl[which(chronic_cis_meqtl$UCSC_RefGene_Name != ""),]
+
+chronic_cis_eqtl$snp_gene <- paste(chronic_cis_eqtl$snps, chronic_cis_eqtl$gene, sep = "*")
+chronic_cis_meqtl$snp_gene <- paste(chronic_cis_meqtl$snps, chronic_cis_meqtl$UCSC_RefGene_Name, sep = "*")
+
+chronic_intersect_snp_gene <- intersect(chronic_cis_eqtl$snp_gene, chronic_cis_meqtl$snp_gene)
+length(chronic_intersect_snp_gene) #701
+chronic_cis_eqtl_sub <- chronic_cis_eqtl[which(chronic_cis_eqtl$snp_gene %in% chronic_intersect_snp_gene),]
+chronic_cis_meqtl_sub <- chronic_cis_meqtl[which(chronic_cis_meqtl$snp_gene %in% chronic_intersect_snp_gene),]
+
+ss <- as.data.frame(table(chronic_cis_eqtl_sub$snp_gene))
+ss <- ss[order(ss$Freq, decreasing = T),]
+sd <- as.data.frame(table(chronic_cis_meqtl_sub$snp_gene))
+sd <- sd[order(sd$Freq, decreasing = T),]
+write.table(sd, "./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.snp_cpg_gene.statistic.txt", quote = F, row.names = F, sep = "\t")
+
+length(intersect(ss$Var1, sd$Var1))
+
+length(unique(chronic_cis_eqtl_sub$gene))
+length(unique(chronic_cis_eqtl_sub$snps))
+length(unique(chronic_cis_meqtl_sub$gene))
+length(unique(chronic_cis_meqtl_sub$snps))
+
+#snps位点， cpg位点， gene
+snps <- unique(c(chronic_cis_eqtl_sub$snps,chronic_cis_meqtl_sub$snps))
+gene <- unique(c(chronic_cis_eqtl_sub$gene,chronic_cis_meqtl_sub$UCSC_RefGene_Name))
+cpgs <- unique(chronic_cis_meqtl_sub$gene,)
+
+chronic_cis_meqtl_sub$snp_cpgs_gene <- paste(chronic_cis_meqtl_sub$snps, chronic_cis_meqtl_sub$gene, chronic_cis_meqtl_sub$UCSC_RefGene_Name, sep = "*")
+write.table(chronic_cis_meqtl_sub, "./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.snp_cpg_gene.txt",quote = F, row.names = F, sep = "\t")
+
+#中介分析数据选择
+chronic_expression_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.scaled.gene_expression.txt",header = T, sep = "\t")
+chronic_snps_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_chronic.snp.info.txt", header = T, sep = "\t")
+
+chronic_snps_meqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.snp.info.txt", header = T, sep = "\t")
+
+library(readr)
+chronic_methylation_meqtl <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_chronic.scaled.meth.beta.txt", col_names = T, delim = "\t")
+length(intersect(colnames(chronic_expression_eqtl), colnames(chronic_methylation_meqtl)))
+idx_peo <- intersect(colnames(chronic_expression_eqtl), colnames(chronic_methylation_meqtl))
+length(grep("^C18",idx_peo))
+length(grep("^C19",idx_peo))
+
+chronic_expression_sub <- cbind(gene=chronic_expression_eqtl[,1], chronic_expression_eqtl[,idx_peo])
+chronic_methylation_sub <- cbind(cpgs=chronic_methylation_meqtl[,1], chronic_methylation_meqtl[,idx_peo])
+
+table(gene %in% chronic_expression_sub$gene)
+table(cpgs %in% chronic_methylation_sub$Cpgs)
+chronic_expression <- chronic_expression_sub[which(chronic_expression_sub$gene %in% gene),]
+chronic_methylation <- chronic_methylation_sub[which(chronic_methylation_sub$Cpgs %in% cpgs),]
+
+snp_idx <- gsub("C","X20",idx_peo)
+chronic_snps_sub <- cbind(snps=chronic_snps_eqtl[,1], chronic_snps_eqtl[,snp_idx])
+chronic_snps <- chronic_snps_sub[which(chronic_snps_sub$snps %in% snps),]
+colnames(chronic_snps)[2:ncol(chronic_snps)] <- gsub("X20","B",colnames(chronic_snps)[2:ncol(chronic_snps)])
+
+table(colnames(chronic_snps)[2:ncol(chronic_snps)] == colnames(chronic_expression)[2:ncol(chronic_expression)])
+table(colnames(chronic_snps)[2:ncol(chronic_snps)] == colnames(chronic_methylation)[2:ncol(chronic_methylation)])
+
+write.table(chronic_expression,"./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.gene_expression.txt", row.names = F, quote = F, sep = "\t")
+write.table(chronic_methylation,"./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.dna_methylation.txt", row.names = F, quote = F, sep = "\t")
+write.table(chronic_snps,"./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.snp_info.txt", row.names = F, quote = F, sep = "\t")
+
+
+rownames(chronic_snps) <- chronic_snps[,1]
+chronic_snps <- chronic_snps[,-1]
+chronic_snps <- as.data.frame(t(chronic_snps))
+
+rownames(chronic_expression) <- chronic_expression[,1]
+chronic_expression <- chronic_expression[,-1]
+chronic_expression <- as.data.frame(t(chronic_expression))
+
+rownames(chronic_methylation) <- chronic_methylation[,1]
+chronic_methylation <- chronic_methylation[,-1]
+chronic_methylation <- as.data.frame(t(chronic_methylation))
+
+library(mediation)
+dat <- cbind(chronic_snps, chronic_methylation, chronic_expression)
+pair <- chronic_cis_meqtl_sub$snp_cpgs_gene
+table(gene %in% colnames(dat))
+
+chronic_result <- data.frame(matrix(nrow = length(pair),ncol = 9))
+colnames(chronic_result) <- c("snps-cpgs-gene","直接效应","p1","中介效应","p2",
+                            "总效应","p3","中介效应占比","p4")
+
+for (i in c(1:length(pair))){
+  print(i)
+  set.seed(100)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  fit.mediator <- lm(substitute(y~x, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  fit.dv <- lm(substitute(y~x+m, list(y=as.name(pp[3]), x=as.name(pp[1]), m=as.name(pp[2]))), data = dat)
+  res <- mediate(fit.mediator,fit.dv, sims = 1000,treat = pp[1],mediator = pp[2])
+  chronic_result[i,1] <- pair[i]
+  chronic_result[i,2] <- res$z.avg #直接效应
+  chronic_result[i,3] <- res$z.avg.p #p值
+  chronic_result[i,4] <- res$d.avg #中介效应
+  chronic_result[i,5] <- res$d.avg.p #p值
+  chronic_result[i,6] <- res$tau.coef #总效应
+  chronic_result[i,7] <- res$tau.p #p值
+  chronic_result[i,8] <- res$n.avg #中介效应占比
+  chronic_result[i,9] <- res$n.avg.p #p值
+} 
+chronic_result <- chronic_result[order(chronic_result$中介效应占比, decreasing = T),]
+range(chronic_result$p4)
+table(chronic_result$p4 < 0.05)
+options(digits = 7, scipen = 1)
+chronic_result$fdr <- p.adjust(chronic_result$p4,method = "fdr")
+write.table(chronic_result, "./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.mediation_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##baseline_cis
+baseline_cis_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/normal/HA18_19_baseline.cis.eqtl.txt", header = T)
+baseline_cis_meqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/HA18_19_combine_baseline.cis.mqtl.txt", header = T)
+
+library(stringr)
+cpgs_info <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/position_dat/cpg_pos_info_850K.txt", header = T, sep = "\t")
+cpgs_info$UCSC_RefGene_Name <- str_split(cpgs_info$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+baseline_cpgs <- cpgs_info[which(cpgs_info$cpgs %in% unique(baseline_cis_meqtl$gene)),]
+idx <- baseline_cpgs[,c(1,5)]
+baseline_cis_meqtl <- merge(baseline_cis_meqtl, idx, by.x = "gene", by.y="cpgs", all=T)
+baseline_cis_meqtl <- na.omit(baseline_cis_meqtl)
+baseline_cis_meqtl <- baseline_cis_meqtl[which(baseline_cis_meqtl$UCSC_RefGene_Name != ""),]
+
+baseline_cis_eqtl$snp_gene <- paste(baseline_cis_eqtl$snps, baseline_cis_eqtl$gene, sep = "*")
+baseline_cis_meqtl$snp_gene <- paste(baseline_cis_meqtl$snps, baseline_cis_meqtl$UCSC_RefGene_Name, sep = "*")
+
+baseline_intersect_snp_gene <- intersect(baseline_cis_eqtl$snp_gene, baseline_cis_meqtl$snp_gene)
+length(baseline_intersect_snp_gene)
+baseline_cis_eqtl_sub <- baseline_cis_eqtl[which(baseline_cis_eqtl$snp_gene %in% baseline_intersect_snp_gene),]
+baseline_cis_meqtl_sub <- baseline_cis_meqtl[which(baseline_cis_meqtl$snp_gene %in% baseline_intersect_snp_gene),]
+
+ss <- as.data.frame(table(baseline_cis_eqtl_sub$snp_gene))
+ss <- ss[order(ss$Freq, decreasing = T),]
+sd <- as.data.frame(table(baseline_cis_meqtl_sub$snp_gene))
+sd <- sd[order(sd$Freq, decreasing = T),]
+write.table(sd, "./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.snp_cpg_gene.statistic.txt", quote = F, row.names = F, sep = "\t")
+
+length(intersect(ss$Var1, sd$Var1))
+
+length(unique(baseline_cis_eqtl_sub$gene))
+length(unique(baseline_cis_eqtl_sub$snps))
+length(unique(baseline_cis_meqtl_sub$gene))
+length(unique(baseline_cis_meqtl_sub$snps))
+
+#snps位点， cpg位点， gene
+snps <- unique(c(baseline_cis_eqtl_sub$snps,baseline_cis_meqtl_sub$snps))
+length(snps)
+gene <- unique(c(baseline_cis_eqtl_sub$gene,baseline_cis_meqtl_sub$UCSC_RefGene_Name))
+length(gene)
+cpgs <- unique(baseline_cis_meqtl_sub$gene)
+length(cpgs)
+
+baseline_cis_meqtl_sub$snp_cpgs_gene <- paste(baseline_cis_meqtl_sub$snps, baseline_cis_meqtl_sub$gene, baseline_cis_meqtl_sub$UCSC_RefGene_Name, sep = "*")
+write.table(baseline_cis_meqtl_sub, "./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.snp_cpg_gene.txt",quote = F, row.names = F, sep = "\t")
+
+#中介分析数据选择
+baseline_expression_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.scaled.gene_expression.txt",header = T, sep = "\t")
+baseline_snps_eqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_eQTL_result/dat_chose_subset/HA18_19_baseline.snp.info.txt", header = T, sep = "\t")
+
+baseline_snps_meqtl <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.snp.info.txt", header = T, sep = "\t")
+
+library(readr)
+baseline_methylation_meqtl <- read_delim("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/combine_mQTL_result/normal/dat_chose_subset/HA18_19_baseline.scaled.meth.beta.txt", col_names = T, delim = "\t")
+length(intersect(colnames(baseline_expression_eqtl), colnames(baseline_methylation_meqtl)))
+idx_peo <- intersect(colnames(baseline_expression_eqtl), colnames(baseline_methylation_meqtl))
+length(grep("^A18",idx_peo))
+length(grep("^A19",idx_peo))
+
+baseline_expression_sub <- cbind(gene=baseline_expression_eqtl[,1], baseline_expression_eqtl[,idx_peo])
+baseline_methylation_sub <- cbind(cpgs=baseline_methylation_meqtl[,1], baseline_methylation_meqtl[,idx_peo])
+
+table(gene %in% baseline_expression_sub$gene)
+table(cpgs %in% baseline_methylation_sub$Cpgs)
+baseline_expression <- baseline_expression_sub[which(baseline_expression_sub$gene %in% gene),]
+baseline_methylation <- baseline_methylation_sub[which(baseline_methylation_sub$Cpgs %in% cpgs),]
+
+snp_idx <- gsub("^A","X20",idx_peo)
+baseline_snps_sub <- cbind(snps=baseline_snps_eqtl[,1], baseline_snps_eqtl[,snp_idx])
+baseline_snps <- baseline_snps_sub[which(baseline_snps_sub$snps %in% snps),]
+colnames(baseline_snps)[2:ncol(baseline_snps)] <- gsub("X20","A",colnames(baseline_snps)[2:ncol(baseline_snps)])
+
+table(colnames(baseline_snps)[2:ncol(baseline_snps)] == colnames(baseline_expression)[2:ncol(baseline_expression)])
+table(colnames(baseline_snps)[2:ncol(baseline_snps)] == colnames(baseline_methylation)[2:ncol(baseline_methylation)])
+
+write.table(baseline_expression,"./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.gene_expression.txt", row.names = F, quote = F, sep = "\t")
+write.table(baseline_methylation,"./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.dna_methylation.txt", row.names = F, quote = F, sep = "\t")
+write.table(baseline_snps,"./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.snp_info.txt", row.names = F, quote = F, sep = "\t")
+
+
+rownames(baseline_snps) <- baseline_snps[,1]
+baseline_snps <- baseline_snps[,-1]
+baseline_snps <- as.data.frame(t(baseline_snps))
+
+rownames(baseline_expression) <- baseline_expression[,1]
+baseline_expression <- baseline_expression[,-1]
+baseline_expression <- as.data.frame(t(baseline_expression))
+
+rownames(baseline_methylation) <- baseline_methylation[,1]
+baseline_methylation <- baseline_methylation[,-1]
+baseline_methylation <- as.data.frame(t(baseline_methylation))
+
+library(mediation)
+dat <- cbind(baseline_snps, baseline_methylation, baseline_expression)
+pair <- baseline_cis_meqtl_sub$snp_cpgs_gene
+table(gene %in% colnames(dat))
+
+baseline_result <- data.frame(matrix(nrow = length(pair),ncol = 9))
+colnames(baseline_result) <- c("snps-cpgs-gene","直接效应","p1","中介效应","p2",
+                              "总效应","p3","中介效应占比","p4")
+
+for (i in c(1:length(pair))){
+  print(i)
+  set.seed(100)
+  pp <- strsplit(pair[i],"[*]")[[1]]
+  fit.mediator <- lm(substitute(y~x, list(y=as.name(pp[2]), x=as.name(pp[1]))), data = dat)
+  fit.dv <- lm(substitute(y~x+m, list(y=as.name(pp[3]), x=as.name(pp[1]), m=as.name(pp[2]))), data = dat)
+  res <- mediate(fit.mediator,fit.dv, sims = 1000,treat = pp[1],mediator = pp[2])
+  baseline_result[i,1] <- pair[i]
+  baseline_result[i,2] <- res$z.avg #直接效应
+  baseline_result[i,3] <- res$z.avg.p #p值
+  baseline_result[i,4] <- res$d.avg #中介效应
+  baseline_result[i,5] <- res$d.avg.p #p值
+  baseline_result[i,6] <- res$tau.coef #总效应
+  baseline_result[i,7] <- res$tau.p #p值
+  baseline_result[i,8] <- res$n.avg #中介效应占比
+  baseline_result[i,9] <- res$n.avg.p #p值
+} 
+baseline_result <- baseline_result[order(baseline_result$中介效应占比, decreasing = T),]
+range(baseline_result$p4)
+table(baseline_result$p4 < 0.05)
+options(digits = 7, scipen = 1)
+baseline_result$fdr <- p.adjust(baseline_result$p4,method = "fdr")
+write.table(baseline_result, "./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.mediation_result.txt",
+            row.names = F, quote = F, sep = "\t")
+
+
+##plot
+acute_statistic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/mediation_analysis/normal/HA18+19_acute.cis.snp_cpg_gene.statistic.txt", header = T, sep = "\t")
+table(acute_statistic$Freq)
+st <- data.frame(table(acute_statistic$Freq))
+library(ggplot2)
+ggplot(st, aes(x=Var1, y=Freq))+
+  theme_classic()+
+  geom_bar(stat = "identity", fill="skyblue", width = 0.5)+
+  geom_text(aes(label=Freq), position = position_dodge(width = 0.5), size=8, vjust=-0.25)+
+  ggtitle("Distribution of snp-cpg-gene pair (acute)")+
+  labs(x="Number of CpGs influenced by a snp within a gene", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.position = c(0.85,0.4),
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+acute_res <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/mediation_analysis/normal/HA18+19_acute.cis.mediation_result.txt", header = T, sep = "\t")
+range(acute_res$中介效应占比)
+p_plot <- acute_res$p2
+p_plot <- p.adjust(p_plot, method = "fdr")
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat <- data.frame(type=c(rep("acute",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+ggplot(p_dat, aes(x=range, y=number))+
+  theme_classic()+
+  geom_bar(stat = "identity", fill="skyblue", width = 0.5)+
+  geom_text(aes(label=number),position = position_dodge(width = 0.5),size=8, vjust=-0.25)+
+  ggtitle("Distribution of p_value for for mediating effect (acute)")+
+  labs(x="range of p_value", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.position = c(0.85,0.4),
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+plot(density(acute_res$p2))
+plot(density(acute_res$中介效应))
+
+baseline_statistic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/mediation_analysis/normal/HA18+19_baseline.cis.snp_cpg_gene.statistic.txt", header = T, sep = "\t")
+table(baseline_statistic$Freq)
+st <- data.frame(table(baseline_statistic$Freq))
+library(ggplot2)
+ggplot(st, aes(x=Var1, y=Freq))+
+  theme_classic()+
+  geom_bar(stat = "identity", fill="skyblue", width = 0.5)+
+  geom_text(aes(label=Freq), position = position_dodge(width = 0.5), size=8, vjust=-0.25)+
+  ggtitle("Distribution of snp-cpg-gene pair (baseline)")+
+  labs(x="Number of CpGs influenced by a snp within a gene", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.position = c(0.85,0.4),
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+baseline_res <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/mediation_analysis/normal/HA18+19_baseline.cis.mediation_result.txt", header = T, sep = "\t")
+range(baseline_res$中介效应占比)
+p_plot <- baseline_res$p2
+length(p_plot)
+p_plot <- p.adjust(p_plot, method = "fdr")
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_2 <- data.frame(type=c(rep("baseline",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+chronic_statistic <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/mediation_analysis/normal/HA18+19_chronic.cis.snp_cpg_gene.statistic.txt", header = T, sep = "\t")
+table(chronic_statistic$Freq)
+st <- data.frame(table(chronic_statistic$Freq))
+library(ggplot2)
+ggplot(st, aes(x=Var1, y=Freq))+
+  theme_classic()+
+  geom_bar(stat = "identity", fill="skyblue", width = 0.5)+
+  geom_text(aes(label=Freq), position = position_dodge(width = 0.5), size=8, vjust=-0.25)+
+  ggtitle("Distribution of snp-cpg-gene pair (chronic)")+
+  labs(x="Number of CpGs influenced by a snp within a gene", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.position = c(0.85,0.4),
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+chronic_res <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/combine_result/mediation_analysis/normal/HA18+19_chronic.cis.mediation_result.txt", header = T, sep = "\t")
+range(chronic_res$中介效应占比)
+p_plot <- chronic_res$p2
+length(p_plot)
+p_plot <- p.adjust(p_plot, method = "fdr")
+p_0.01 <- length(p_plot[which(p_plot>=0 & p_plot<=0.01)])
+p_0.01
+p_0.05 <- length(p_plot[which(p_plot>0.01 & p_plot<=0.05)])
+p_0.05
+p_1 <- length(p_plot[which(p_plot>0.05 & p_plot<=1)])
+p_1
+p_dat_3 <- data.frame(type=c(rep("chronic",3)),range=c('0 - 0.01', '0.01 - 0.05', '0.05 - 1'),number=c(p_0.01,p_0.05,p_1))
+
+pp <- rbind(p_dat_2, p_dat, p_dat_3)
+pp$type <- factor(pp$type, levels = c("baseline","acute","chronic"))
+colnames(pp)
+
+  
+ggplot(pp, aes(x=type, y=number,fill=range))+
+  theme_classic()+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(label=number),position = position_stack(vjust = 0.4),size=8)+
+  ggtitle("Distribution of p_value for mediating effect")+
+  labs(x="Period", y="Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+
+
+baseline_statistic$Var1 <- gsub("[*]","-", baseline_statistic$Var1)
+chronic_statistic$Var1 <- gsub("[*]","-", chronic_statistic$Var1)
+
+baseline <- baseline_res[which(baseline_res$p2 <= 0.05),]
+acute <- acute_res[which(acute_res$p2 <= 0.05),]
+dim(acute)
+chronic <- chronic_res[which(chronic_res$p2 <= 0.05),]
+dim(chronic)
+library(grid)
+library(futile.logger)
+library(VennDiagram)
+venn.diagram(x = list(baseline = baseline$snps.cpgs.gene, acute = acute$snps.cpgs.gene, chronic=chronic$snps.cpgs.gene),
+             filename = './combine_result/mediation_analysis/normal/three_period_snp-cpgs-gene_pair.png', imagetype = 'png', 
+             fill = c("#8ECFC9","#FA7F6F","#82B0D2"), 
+             disable.logging = T,
+             cat.cex = 1.5, 
+             cat.col = c("#8ECFC9","#FA7F6F","#82B0D2"), 
+             col = c("#8ECFC9","#FA7F6F","#82B0D2"), cex = 3,
+             scaled = F, fontface = "bold",
+             category.names = c("baseline", "acute","chronic"),
+             #cat.dist = 0.02, cat.pos = -180,
+             cat.fontface = 'bold', cat.default.pos = 'outer'
+)
+
+venn.diagram(x = list(baseline_res = baseline_res$snps.cpgs.gene, acute_res = acute_res$snps.cpgs.gene, chronic_res=chronic_res$snps.cpgs.gene),
+             filename = './combine_result/mediation_analysis/normal/three_period_snp-cpgs-gene_pair_all.png', imagetype = 'png', 
+             fill = c("#8ECFC9","#FA7F6F","#82B0D2"), 
+             disable.logging = T,
+             cat.cex = 1.5, 
+             cat.col = c("#8ECFC9","#FA7F6F","#82B0D2"), 
+             col = c("#8ECFC9","#FA7F6F","#82B0D2"), cex = 3,
+             scaled = F, fontface = "bold",
+             category.names = c("baseline", "acute","chronic"),
+             #cat.dist = 0.02, cat.pos = -180,
+             cat.fontface = 'bold', cat.default.pos = 'outer'
+)
+length(intersect(baseline_statistic$Var1,acute_statistic$Var1))
+
+library(stringr)
+acute_unique <- unique(str_split(setdiff(setdiff(acute$snps.cpgs.gene,baseline$snps.cpgs.gene), chronic$snps.cpgs.gene), "[*]", simplify = T)[,3])
+library(clusterProfiler)
+library(org.Hs.eg.db)
+gg <- bitr(acute_unique,fromType = "SYMBOL",
+           toType = c("ENTREZID","ENSEMBL"),
+           OrgDb = "org.Hs.eg.db")
+kegg <- enrichKEGG(gg$ENTREZID,
+                      organism = "hsa",
+                      keyType = "kegg",
+                      pvalueCutoff = 0.9,
+                      pAdjustMethod = "BH",
+                      qvalueCutoff = 0.9)
+barplot(kegg)
+
+chronic_unique <- unique(str_split(setdiff(setdiff(chronic$snps.cpgs.gene,baseline$snps.cpgs.gene), acute$snps.cpgs.gene), "[*]", simplify = T)[,3])
+gg <- bitr(chronic_unique,fromType = "SYMBOL",
+           toType = c("ENTREZID","ENSEMBL"),
+           OrgDb = "org.Hs.eg.db")
+kegg <- enrichKEGG(gg$ENTREZID,
+                   organism = "hsa",
+                   keyType = "kegg",
+                   pvalueCutoff = 0.9,
+                   pAdjustMethod = "BH",
+                   qvalueCutoff = 0.9)
+barplot(kegg)
+
+acute_chronic <- unique(str_split(setdiff(intersect(acute$snps.cpgs.gene, chronic$snps.cpgs.gene),baseline$snps.cpgs.gene), "[*]", simplify = T)[,3])
+
+range(acute_res$中介效应占比)
+range(baseline_res$中介效应占比)
+range(chronic_res$中介效应占比)
+
+inter <- Reduce(intersect, list(baseline$snps.cpgs.gene, acute$snps.cpgs.gene, chronic$snps.cpgs.gene))
+int <- unique(str_split(inter, "[*]", simplify = T))[,3]
+
+gg <- bitr(int,fromType = "SYMBOL",
+           toType = c("ENTREZID","ENSEMBL"),
+           OrgDb = "org.Hs.eg.db")
+kegg <- enrichKEGG(gg$ENTREZID,
+                   organism = "hsa",
+                   keyType = "kegg",
+                   pvalueCutoff = 0.9,
+                   pAdjustMethod = "BH",
+                   qvalueCutoff = 0.9)
+barplot(kegg)
+
+quantile(baseline_res$中介效应占比)
+quantile(acute_res$中介效应占比)
+quantile(chronic_res$中介效应占比)
+
+##中介效应占比
+baseline_res <- read.table("./combine_result/mediation_analysis/normal/HA18+19_baseline.cis.mediation_result.txt", header = T, sep = "\t")
+acute_res <- read.table("./combine_result/mediation_analysis/normal/HA18+19_acute.cis.mediation_result.txt", header = T, sep = "\t")
+chronic_res <- read.table("./combine_result/mediation_analysis/normal/HA18+19_chronic.cis.mediation_result.txt", header = T, sep = "\t")
+
+baseline_res_sub <- baseline_res[which(baseline_res$p2 <= 0.05),]
+acute_res_sub <- acute_res[which(acute_res$p2 <= 0.05),]
+chronic_res_sub <- chronic_res[which(chronic_res$p2 <= 0.05),]
+tmp=c()
+#dat_process <- function(dd){
+dd=list(baseline_res_sub, acute_res_sub, chronic_res_sub)
+for (dat in dd){
+      plot <- dat$中介效应占比
+      p__1_0 <- length(plot[which(plot>=-1 & plot<0)])
+      p_0_0.25 <- length(plot[which(plot>=0 & plot<0.25)])
+      p_0_0.5 <- length(plot[which(plot>=0.25 & plot<0.5)])
+      p_0.5_0.75 <- length(plot[which(plot>=0.5 & plot<0.75)])
+      p_0.75_1 <- length(plot[which(plot>=0.75 & plot<1)])
+      p_1_1.5 <- length(plot[which(plot>=1 & plot<=1.5)])
+      tt <- c(p__1_0,p_0_0.25,p_0_0.5,p_0.5_0.75,p_0.75_1,p_1_1.5)
+      tmp <- append(tmp,tt)
+ }
+#}
+period <- c(rep(c("baseline","acute","chronic"), each=6))
+range <- c(rep(c("[-1,0)","[0,0.25)","[0.25,0.5)","[0.5,0.75)","[0.75,1)","[1,1.5)"), 3))
+media_dat_plot <- data.frame(period, range, freq=tmp)
+media_dat_plot$period <- factor(media_dat_plot$period, levels = c("baseline","acute","chronic"))
+str(media_dat_plot)
+ggplot(media_dat_plot, aes(x=range, y=freq,fill=period))+
+  theme_bw()+
+  geom_bar(stat = "identity", position = "dodge", width = 0.8)+
+  geom_text(aes(label=freq), position = position_dodge(width = 0.8), size=5, vjust=-0.25)+
+  xlab("Percentage of mediating effect")+
+  ylab("Frequency")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
