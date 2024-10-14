@@ -1,0 +1,813 @@
+setwd("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected")
+################gene expression
+library(FactoMineR)
+library(ggplot2)
+library(factoextra)
+library(ggthemes)
+###baseline
+HA18 <- read.table("../HA2018/HA2018.baseline.sleuth.norm_tpm.txt", header = T, row.names = 1)
+HA19 <- read.table("../HA2019/HA2019.baseline.sleuth.norm_tpm.txt", header = T, row.names = 1)
+table(rownames(HA18) == rownames(HA19))
+dat <- cbind(HA18, HA19)
+max(dat)
+#dat <- dat[which(rowMeans(dat) > 1),]
+dat <- log2(dat + 1)
+
+batch <- c(rep("2018",ncol(HA18)), rep("2019",ncol(HA19)))
+
+library(FactoMineR)
+pre.pca_ori <- PCA(t(dat), graph = F)
+before <- fviz_pca_ind(pre.pca_ori,
+                       geom = "point",
+                       col.ind = batch,
+                       addEllipses = T,
+                       ellipse.level=0.9,
+                       legend.title="Group",
+                       title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+library(sva)
+combat_test <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+pre.pca_after <- PCA(t(combat_test), graph = F)
+after <- fviz_pca_ind(pre.pca_after,
+                      geom = "point",
+                      col.ind = batch,
+                      addEllipses = T,
+                      ellipse.level=0.9,
+                      legend.title="Group",
+                      title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+dat_pca <- cowplot::plot_grid(before, after,
+                              ncol = 2, nrow = 1,
+                              labels = toupper(letters)[1:2],
+                              align = "hv")
+ggsave(dat_pca,
+       filename="./plot/HA18_19_Baseline.gene_expression._PCA_batch_corrected.tiff",
+       height = 5, width = 8)
+
+combat_test <- as.data.frame(combat_test)
+combat_test <- cbind(genes=rownames(combat_test),combat_test)
+write.table(combat_test,"./HA18_19.baseline.gene.expression.batch_corrected.txt", quote = F, sep = "\t", row.names = F)
+
+library(CIBERSORT)
+data(LM22)
+results <- cibersort(sig_matrix = LM22, mixture_file = combat_test[,2:ncol(combat_test)],
+                     perm = 1000, QN = F)
+result <- as.data.frame(results)
+result <- cbind(id=rownames(result), result)
+write.table(result, "./HA18+19_baseline_gene_expression_cell_spit_ori.txt",
+            row.names = F, quote = F, sep = "\t")
+
+###acute
+HA18 <- read.table("../HA2018/HA2018.acute.sleuth.norm_tpm.txt", header = T, row.names = 1)
+HA19 <- read.table("../HA2019/HA2019.acute.sleuth.norm_tpm.txt", header = T, row.names = 1)
+table(rownames(HA18) == rownames(HA19))
+dat <- cbind(HA18, HA19)
+max(dat)
+#dat <- dat[which(rowMeans(dat) > 1),]
+dat <- log2(dat + 1)
+
+batch <- c(rep("2018",ncol(HA18)), rep("2019",ncol(HA19)))
+
+library(FactoMineR)
+pre.pca_ori <- PCA(t(dat), graph = F)
+before <- fviz_pca_ind(pre.pca_ori,
+             geom = "point",
+             col.ind = batch,
+             addEllipses = T,
+             ellipse.level=0.9,
+             legend.title="Group",
+             title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+library(sva)
+combat_test <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+pre.pca_after <- PCA(t(combat_test), graph = F)
+after <- fviz_pca_ind(pre.pca_after,
+             geom = "point",
+             col.ind = batch,
+             addEllipses = T,
+             ellipse.level=0.9,
+             legend.title="Group",
+             title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+dat_pca <- cowplot::plot_grid(before, after,
+                              ncol = 2, nrow = 1,
+                              labels = toupper(letters)[1:2],
+                              align = "hv")
+ggsave(dat_pca,
+       filename="./plot/HA18_19_Acute.gene_expression._PCA_batch_corrected.tiff",
+       height = 5, width = 8)
+
+combat_test <- as.data.frame(combat_test)
+combat_test <- cbind(genes=rownames(combat_test),combat_test)
+write.table(combat_test,"./HA18_19.acute.gene.expression.batch_corrected.txt", quote = F, sep = "\t", row.names = F)
+
+library(CIBERSORT)
+data(LM22)
+results <- cibersort(sig_matrix = LM22, mixture_file = combat_test[,2:ncol(combat_test)],
+                     perm = 1000, QN = F)
+result <- as.data.frame(results)
+result <- cbind(id=rownames(result), result)
+write.table(result, "./HA18+19_acute_gene_expression_cell_spit_ori.txt",
+            row.names = F, quote = F, sep = "\t")
+
+###chronic
+HA18 <- read.table("../HA2018/HA2018.chronic.sleuth.norm_tpm.txt", header = T, row.names = 1)
+HA19 <- read.table("../HA2019/HA2019.chronic.sleuth.norm_tpm.txt", header = T, row.names = 1)
+table(rownames(HA18) == rownames(HA19))
+dat <- cbind(HA18, HA19)
+max(dat)
+#dat <- dat[which(rowMeans(dat) > 1),]
+dat <- log2(dat + 1)
+
+batch <- c(rep("2018",ncol(HA18)), rep("2019",ncol(HA19)))
+
+library(FactoMineR)
+library(ggplot2)
+library(factoextra)
+
+pre.pca_ori <- PCA(t(dat), graph = F)
+before <- fviz_pca_ind(pre.pca_ori,
+                       geom = "point",
+                       col.ind = batch,
+                       addEllipses = T,
+                       ellipse.level=0.9,
+                       legend.title="Group",
+                       title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+library(sva)
+combat_test <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+pre.pca_after <- PCA(t(combat_test), graph = F)
+after <- fviz_pca_ind(pre.pca_after,
+                      geom = "point",
+                      col.ind = batch,
+                      addEllipses = T,
+                      ellipse.level=0.9,
+                      legend.title="Group",
+                      title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+dat_pca <- cowplot::plot_grid(before, after,
+                              ncol = 2, nrow = 1,
+                              labels = toupper(letters)[1:2],
+                              align = "hv")
+ggsave(dat_pca,
+       filename="./plot/HA18_19_Chronic.gene_expression._PCA_batch_corrected.tiff",
+       height = 5, width = 8)
+
+
+combat_test <- as.data.frame(combat_test)
+combat_test <- cbind(genes=rownames(combat_test),combat_test)
+write.table(combat_test,"./HA18_19.chronic.gene.expression.batch_corrected.txt", quote = F, sep = "\t", row.names = F)
+
+library(CIBERSORT)
+data(LM22)
+results <- cibersort(sig_matrix = LM22, mixture_file = combat_test[,2:ncol(combat_test)],
+                     perm = 1000, QN = F)
+result <- as.data.frame(results)
+result <- cbind(id=rownames(result), result)
+write.table(result, "./HA18+19_chronic_gene_expression_cell_spit_ori.txt",
+            row.names = F, quote = F, sep = "\t")
+
+ 
+####################methylation
+setwd("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected")
+library(readr)
+library(EpiDISH)
+library(FactoMineR)
+library(ggplot2)
+library(factoextra)
+library(ggthemes)
+###baseline
+HA18 <- read_delim("../HA2018/HA2018.baseline.Meth.batch1.beta.txt", col_names = T, delim = "\t")
+HA19 <- read_delim("../HA2019/HA2019.baseline.Meth.beta.txt", col_names = T, delim = "\t")
+table((HA18[,1]) == rownames(HA19[,1]))
+inter <- intersect(HA18$cpgs, HA19$cpgs)
+
+HA18_sub <- HA18[match(inter, HA18$cpgs),]
+HA19_sub <- HA19[match(inter, HA19$cpgs),]
+table(HA18_sub$cpgs == HA19_sub$cpgs)
+
+dat <- cbind(HA18_sub, HA19_sub[,2:ncol(HA19_sub)])
+rownames(dat) <- dat$cpgs
+dat <- dat[,-1]
+max(dat)
+min(dat)
+
+
+batch <- c(rep("2018",ncol(HA18)-1), rep("2019",ncol(HA19)-1))
+
+library(FactoMineR)
+library(ggthemes)
+pre.pca_ori <- PCA(t(dat), graph = F)
+before <- fviz_pca_ind(pre.pca_ori,
+                       geom = "point",
+                       col.ind = batch,
+                       addEllipses = T,
+                       ellipse.level=0.9,
+                       legend.title="Group",
+                       title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+library(sva)
+combat_test <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+pre.pca_after <- PCA(t(combat_test), graph = F)
+after <- fviz_pca_ind(pre.pca_after,
+                      geom = "point",
+                      col.ind = batch,
+                      addEllipses = T,
+                      ellipse.level=0.9,
+                      legend.title="Group",
+                      title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+dat_pca <- cowplot::plot_grid(before, after,
+                              ncol = 2, nrow = 1,
+                              labels = toupper(letters)[1:2],
+                              align = "hv")
+ggsave(dat_pca,
+       filename="./plot/HA18_19_Baseline.meth_beta._PCA_batch_corrected.tiff",
+       height = 5, width = 8)
+combat_test <- as.data.frame(combat_test)
+combat_test <- cbind(cpgs=rownames(combat_test),combat_test)
+write.table(combat_test,"./HA18_19.baseline.meth.beta.batch_corrected.txt", row.names = F, quote = F ,sep = "\t")
+
+mycombat <- combat_test[,c(2:ncol(combat_test))]
+BloodFrac.m <- epidish(beta.m = mycombat,
+                       ref.m = centDHSbloodDMC.m,
+                       method = "RPC")$estF
+result <- cbind(id=rownames(BloodFrac.m), BloodFrac.m)
+write.table(result, "./HA18+19_baseline.meth_beta.cell_spit_ori.txt", row.names = F, quote = F, sep = "\t")
+
+######acute
+HA18 <- read_delim("../HA2018/HA2018.acute.Meth.batch1.beta.txt", col_names = T, delim = "\t")
+HA19 <- read_delim("../HA2019/HA2019.acute.Meth.beta.txt", col_names = T, delim = "\t")
+table((HA18[,1]) == rownames(HA19[,1]))
+inter <- intersect(HA18$cpgs, HA19$cpgs)
+
+HA18_sub <- HA18[match(inter, HA18$cpgs),]
+HA19_sub <- HA19[match(inter, HA19$cpgs),]
+table(HA18_sub$cpgs == HA19_sub$cpgs)
+
+dat <- cbind(HA18_sub, HA19_sub[,2:ncol(HA19_sub)])
+rownames(dat) <- dat$cpgs
+dat <- dat[,-1]
+max(dat)
+min(dat)
+
+
+batch <- c(rep("2018",ncol(HA18)-1), rep("2019",ncol(HA19)-1))
+
+library(FactoMineR)
+library(ggthemes)
+pre.pca_ori <- PCA(t(dat), graph = F)
+before <- fviz_pca_ind(pre.pca_ori,
+                       geom = "point",
+                       col.ind = batch,
+                       addEllipses = T,
+                       ellipse.level=0.9,
+                       legend.title="Group",
+                       title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+library(sva)
+combat_test <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+pre.pca_after <- PCA(t(combat_test), graph = F)
+after <- fviz_pca_ind(pre.pca_after,
+                      geom = "point",
+                      col.ind = batch,
+                      addEllipses = T,
+                      ellipse.level=0.9,
+                      legend.title="Group",
+                      title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+dat_pca <- cowplot::plot_grid(before, after,
+                              ncol = 2, nrow = 1,
+                              labels = toupper(letters)[1:2],
+                              align = "hv")
+ggsave(dat_pca,
+       filename="./plot/HA18_19_Acute.meth_beta._PCA_batch_corrected.tiff",
+       height = 5, width = 8)
+
+combat_test <- as.data.frame(combat_test)
+combat_test <- cbind(cpgs=rownames(combat_test),combat_test)
+write.table(combat_test,"./HA18_19.acute.meth.beta.batch_corrected.txt", row.names = F, quote = F ,sep = "\t")
+
+mycombat <- combat_test[,c(2:ncol(combat_test))]
+BloodFrac.m <- epidish(beta.m = mycombat,
+                       ref.m = centDHSbloodDMC.m,
+                       method = "RPC")$estF
+result <- cbind(id=rownames(BloodFrac.m), BloodFrac.m)
+write.table(result, "./HA18+19_acute.meth_beta.cell_spit_ori.txt", row.names = F, quote = F, sep = "\t")
+
+
+######chronic
+HA18 <- read_delim("../HA2018/HA2018.chronic.Meth.batch1.beta.txt", col_names = T, delim = "\t")
+HA19 <- read_delim("../HA2019/HA2019.chronic.Meth.beta.txt", col_names = T, delim = "\t")
+table((HA18[,1]) == rownames(HA19[,1]))
+inter <- intersect(HA18$cpgs, HA19$cpgs)
+
+HA18_sub <- HA18[match(inter, HA18$cpgs),]
+HA19_sub <- HA19[match(inter, HA19$cpgs),]
+table(HA18_sub$cpgs == HA19_sub$cpgs)
+
+dat <- cbind(HA18_sub, HA19_sub[,2:ncol(HA19_sub)])
+rownames(dat) <- dat$cpgs
+dat <- dat[,-1]
+max(dat)
+min(dat)
+
+
+batch <- c(rep("2018",ncol(HA18)-1), rep("2019",ncol(HA19)-1))
+
+library(FactoMineR)
+library(ggthemes)
+pre.pca_ori <- PCA(t(dat), graph = F)
+before <- fviz_pca_ind(pre.pca_ori,
+                       geom = "point",
+                       col.ind = batch,
+                       addEllipses = T,
+                       ellipse.level=0.9,
+                       legend.title="Group",
+                       title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+library(sva)
+combat_test <- ComBat(dat = dat, batch = batch, mod = NULL, par.prior = T)
+pre.pca_after <- PCA(t(combat_test), graph = F)
+after <- fviz_pca_ind(pre.pca_after,
+                      geom = "point",
+                      col.ind = batch,
+                      addEllipses = T,
+                      ellipse.level=0.9,
+                      legend.title="Group",
+                      title="")+
+  theme_few()+
+  theme(legend.direction = "horizontal", legend.position = "top",
+        axis.text = element_text(size=8))
+
+dat_pca <- cowplot::plot_grid(before, after,
+                              ncol = 2, nrow = 1,
+                              labels = toupper(letters)[1:2],
+                              align = "hv")
+ggsave(dat_pca,
+       filename="./plot/HA18_19_Chronic.meth_beta._PCA_batch_corrected.tiff",
+       height = 5, width = 8)
+combat_test <- as.data.frame(combat_test)
+combat_test <- cbind(cpgs=rownames(combat_test),combat_test)
+write.table(combat_test,"./HA18_19.chronic.meth.beta.batch_corrected.txt", row.names = F, quote = F ,sep = "\t")
+
+mycombat <- combat_test[,c(2:ncol(combat_test))]
+BloodFrac.m <- epidish(beta.m = mycombat,
+                       ref.m = centDHSbloodDMC.m,
+                       method = "RPC")$estF
+result <- cbind(id=rownames(BloodFrac.m), BloodFrac.m)
+write.table(result, "./HA18+19_chronic.meth_beta.cell_spit_ori.txt", row.names = F, quote = F, sep = "\t")
+
+############转录组数据免疫浸润分析绘图
+setwd("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/dat/cell_split/")
+merge_dat <- function(dat){
+  id=dat$id
+  B.cells=dat$B.cells.naive + dat$B.cells.memory
+  Plasma.cells=dat$Plasma.cells
+  T.cells.CD8=dat$T.cells.CD8
+  T.cells.CD4=dat$T.cells.CD4.naive + dat$T.cells.CD4.memory.resting + dat$T.cells.CD4.memory.activated 
+  T.cells.follicular.helper = dat$T.cells.follicular.helper
+  T.cells.regulatory..Tregs.= dat$T.cells.regulatory..Tregs.
+  T.cells.gamma.delta= dat$T.cells.gamma.delta
+  NK.cells=dat$NK.cells.resting + dat$NK.cells.activated
+  Monocytes=dat$Monocytes
+  Macrophages=dat$Macrophages.M0+dat$Macrophages.M1 + dat$Macrophages.M2
+  Dendritic.cells=dat$Dendritic.cells.resting+dat$Dendritic.cells.activated
+  Eosinophils=dat$Eosinophils
+  Neutrophils=dat$Neutrophils
+  #new_dat <- data.frame(id,B.cells,Plasma.cells,T.cells.CD8,T.cells.CD4,T.cells.follicular.helper,T.cells.regulatory..Tregs.,T.cells.gamma.delta,NK.cells,Monocytes,Macrophages,Dendritic.cells,Eosinophils,Neutrophils)
+  new_dat <- data.frame(id,B.cells,Plasma.cells,T.cells.CD8,T.cells.CD4,NK.cells,Monocytes,Macrophages,Dendritic.cells,Eosinophils,Neutrophils)
+  return(new_dat)
+}
+path <- "/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected/"
+for (i in list.files(path)[grep("gene_expression_cell_spit_ori", list.files(path))]){
+  name <- sapply(strsplit(i, "[.]"),"[[",1)
+  dat <- read.table(paste0(path,i), header = T, sep = "\t")
+  dd <- merge_dat(dat)
+  write.table(dd, paste0("./",name,".txt"), row.names = F, quote = F, sep = "\t")
+  #cv <- dd[,c("id","B.cells","T.cells.CD4","T.cells.CD8","NK.cells","Monocytes","Neutrophils")]
+  cv <- dd
+  rownames(cv) <- cv$id
+  cv <- cv[,-1]
+  cv <- t(cv)
+  cv <- cbind(id=rownames(cv), cv)
+  write.table(cv, paste0("./",name,".cv.txt"), row.names = F, quote = F, sep = "\t")
+}
+
+# test <- read.table("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected/HA18+19_chronic_gene_expression_cell_spit_ori.txt",header = T, sep = "\t")
+# test <- merge_dat(test)
+# table(is.na(test))
+# s <- apply(test[,2:ncol(test)], 2, mean)
+
+acute <- read.table("./HA18+19_acute_gene_expression_cell_spit_ori.txt",
+                    header = T, sep = "\t")
+baseline <- read.table("./HA18+19_baseline_gene_expression_cell_spit_ori.txt",
+                       header = T, sep = "\t")
+chronic <- read.table("./HA18+19_chronic_gene_expression_cell_spit_ori.txt",
+                      header = T, sep = "\t")
+
+acute <- cbind(period=c(rep("Acute", nrow(acute))), acute)
+baseline <- cbind(period=c(rep("Baseline", nrow(baseline))), baseline)
+chronic <- cbind(period=c(rep("Chronic", nrow(chronic))),chronic)
+dat <- rbind(baseline,acute, chronic)
+rownames(dat) <- dat$id
+dat$period <- factor(dat$period, levels = c("Baseline","Acute","Chronic"))
+cel <- colnames(dat[,3:ncol(dat)])
+
+library(ggplot2)
+library(ggpubr)
+mytheme <- theme(plot.title = element_text(size = 12, colour = "black", hjust = 0.5),
+                 axis.title = element_text(size = 14, colour = "black", face = "bold"),
+                 axis.text = element_text(size = 12, colour = "black", face = "bold"),
+                 panel.grid.minor.y = element_blank(),
+                 panel.grid.minor.x = element_blank(),
+                 #axis.text.x = element_text(angle = 90,hjust = 1),
+                 panel.grid = element_blank(),
+                 legend.position = "top",
+                 legend.text = element_text(size = 12),
+                 title = element_text(size = 16, face = "bold"),
+                 legend.title = element_blank())
+
+for (i in cel){
+  result_name <- paste0("./plot/gene_expression/",i,".pdf")
+  pdf(result_name, width = 5, height = 5)
+  cell <- dat[,i]
+  p <- ggplot(dat, aes(period, cell))+
+    labs(y = "Percentage", x = NULL)+
+    geom_boxplot(aes(fill = period), outlier.colour = NA)+
+    scale_fill_manual(values = c("#8ECFC9","#FA7F6F","#82B0D2"))+
+    theme_few()+ mytheme +
+    stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                          c("Baseline","Chronic"),
+                                          c("Acute","Chronic")),
+                       method = "t.test",
+                       label = "p.signif", hide.ns = T)+
+    theme(legend.position = "none")+
+    ggtitle(paste0(i))
+  print(p)
+  dev.off()
+}
+options(digits = 3)
+baseline_num <- apply(baseline[,3:ncol(baseline)], 2, mean)
+acute_num <- apply(acute[,3:ncol(acute)], 2, mean)
+chronic_num <- apply(chronic[,3:ncol(chronic)], 2, mean)
+
+period <- c(rep(c("Baseline","Acute","Chronic"), each = 10))
+cell_type <- c(rep(colnames(baseline)[3:ncol(baseline)], 3))
+component <- c(baseline_num, acute_num, chronic_num)
+dd <- data.frame(period, cell_type, component)
+dd$period <- factor(dd$period, levels = c("Baseline","Acute","Chronic"))
+dd$cell_type <- factor(dd$cell_type, levels = c("B.cells","T.cells.CD8","T.cells.CD4",
+                                                "NK.cells","Monocytes","Dendritic.cells","Neutrophils","Plasma.cells","Macrophages","Eosinophils"))
+
+library(ggthemes)
+pdf("./plot/gene_expression/HA18+19_三个时期堆叠柱状图.pdf")
+p1 <- ggplot(dd, aes(x = period, y = component, fill = cell_type))+
+  geom_bar(stat = "identity", width = 0.5, position = "fill", color="black")+
+  scale_fill_manual(values = c("#934B43","#F1D77E","#9394E7",
+                               "#D76364","#B1CE46","#5F97D2",
+                               "#496C88","#1DC3E7","#3FF6E7","#4363d8"))+
+  theme_few()+
+  labs(x = '', y = "Percentage")+
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 7, face = "bold"),
+        legend.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 12, colour = "black", face = "bold"),
+        axis.title = element_text(size = 16, colour = "black", face = "bold"))
+print(p1)
+dev.off()
+
+base_sum <- paste(round(apply(baseline[,3:ncol(baseline)], 2, mean),3),round(apply(baseline[,3:ncol(baseline)], 2, sd),3), sep = "±")
+acute_sum <- paste(round(apply(acute[,3:ncol(acute)], 2, mean),3),round(apply(acute[,3:ncol(acute)], 2, sd),3), sep = "±")
+chronic_sum <- paste(round(apply(chronic[,3:ncol(chronic)], 2, mean),3),round(apply(chronic[,3:ncol(chronic)], 2, sd),3), sep = "±")
+
+dat_sum <- data.frame(cell=colnames(baseline)[3:ncol(baseline)],Baseline=base_sum, Acute=acute_sum, Chronic=chronic_sum)
+write.table(dat_sum,"./HA18+19_gene_expression_cell_component_summmary.txt", quote = F, row.names = F, sep = "\t")
+
+##########甲基化数据免疫浸润分析
+list.files(path)[grep("meth_beta.cell_spit_ori", list.files(path))]
+# test <- read.table(paste0(path,"HA18+19_chronic.meth_beta.cell_spit_ori.txt"), header = T)
+# mean(test$Eosino)
+for (i in list.files(path)[grep("meth_beta.cell_spit_ori", list.files(path))]){
+  name <- sapply(strsplit(i, "[.]"),"[[",1)
+  dat <- read.table(paste0(path,i), header = T, sep = "\t")
+  dd <- dat[,-8]
+  write.table(dd, paste0("./",name,".meth_beta",".txt"), row.names = F, quote = F, sep = "\t")
+  #cv <- dd[,c("id","B.cells","T.cells.CD4","T.cells.CD8","NK.cells","Monocytes","Neutrophils")]
+  cv <- dd
+  rownames(cv) <- cv$id
+  cv <- cv[,-1]
+  cv <- t(cv)
+  cv <- cbind(id=rownames(cv), cv)
+  write.table(cv, paste0("./",name,".meth_beta",".cv.txt"), row.names = F, quote = F, sep = "\t")
+}
+
+acute <- read.table("./HA18+19_acute.meth_beta.txt",
+                    header = T, sep = "\t")
+baseline <- read.table("./HA18+19_baseline.meth_beta.txt",
+                       header = T, sep = "\t")
+chronic <- read.table("./HA18+19_chronic.meth_beta.txt",
+                      header = T, sep = "\t")
+
+acute <- cbind(period=c(rep("Acute", nrow(acute))), acute)
+baseline <- cbind(period=c(rep("Baseline", nrow(baseline))), baseline)
+chronic <- cbind(period=c(rep("Chronic", nrow(chronic))),chronic)
+dat <- rbind(baseline,acute, chronic)
+rownames(dat) <- dat$id
+dat$period <- factor(dat$period, levels = c("Baseline","Acute","Chronic"))
+cel <- colnames(dat[,3:ncol(dat)])
+
+library(ggplot2)
+library(ggpubr)
+mytheme <- theme(plot.title = element_text(size = 12, colour = "black", hjust = 0.5),
+                 axis.title = element_text(size = 14, colour = "black", face = "bold"),
+                 axis.text = element_text(size = 12, colour = "black", face = "bold"),
+                 panel.grid.minor.y = element_blank(),
+                 panel.grid.minor.x = element_blank(),
+                 #axis.text.x = element_text(angle = 90,hjust = 1),
+                 panel.grid = element_blank(),
+                 legend.position = "top",
+                 legend.text = element_text(size = 12),
+                 title = element_text(size = 16, face = "bold"),
+                 legend.title = element_blank())
+
+for (i in cel){
+  result_name <- paste0("./plot/methylation/",i,".pdf")
+  pdf(result_name, width = 5, height = 5)
+  cell <- dat[,i]
+  p <- ggplot(dat, aes(period, cell))+
+    labs(y = "Percentage", x = NULL)+
+    geom_boxplot(aes(fill = period), outlier.colour = NA)+
+    scale_fill_manual(values = c("#8ECFC9","#FA7F6F","#82B0D2"))+
+    theme_few()+ mytheme +
+    stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                          c("Baseline","Chronic"),
+                                          c("Acute","Chronic")),
+                       method = "t.test",
+                       label = "p.signif", hide.ns = T)+
+    theme(legend.position = "none")+
+    ggtitle(paste0(i))
+  print(p)
+  dev.off()
+}
+
+options(digits = 3)
+baseline_num <- apply(baseline[,3:ncol(baseline)], 2, mean)
+acute_num <- apply(acute[,3:ncol(acute)], 2, mean)
+chronic_num <- apply(chronic[,3:ncol(chronic)], 2, mean)
+
+period <- c(rep(c("Baseline","Acute","Chronic"), each = 6))
+cell_type <- c(rep(c("B.cells","NK.cells","T.cells.CD4","T.cells.CD8","Monocytes","Neutrophils"), 3))
+component <- c(baseline_num, acute_num, chronic_num)
+dd <- data.frame(period, cell_type, component)
+dd$period <- factor(dd$period, levels = c("Baseline","Acute","Chronic"))
+dd$cell_type <- factor(dd$cell_type, levels = c("B.cells","T.cells.CD8","T.cells.CD4",
+                                                "NK.cells","Monocytes","Neutrophils"))
+
+library(ggthemes)
+pdf("./plot/methylation/HA18+19_三个时期堆叠柱状图.pdf")
+p1 <- ggplot(dd, aes(x = period, y = component, fill = cell_type))+
+  geom_bar(stat = "identity", width = 0.5, position = "fill", color="black")+
+  scale_fill_manual(values = c("#934B43","#F1D77E","#9394E7",
+                               "#D76364","#B1CE46","#5F97D2"))+
+  theme_few()+
+  labs(x = '', y = "Percentage")+
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 7, face = "bold"),
+        legend.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 12, colour = "black", face = "bold"),
+        axis.title = element_text(size = 16, colour = "black", face = "bold"))
+print(p1)
+dev.off()
+
+base_sum <- paste(round(apply(baseline[,3:ncol(baseline)], 2, mean),3),round(apply(baseline[,3:ncol(baseline)], 2, sd),3), sep = "±")
+acute_sum <- paste(round(apply(acute[,3:ncol(acute)], 2, mean),3),round(apply(acute[,3:ncol(acute)], 2, sd),3), sep = "±")
+chronic_sum <- paste(round(apply(chronic[,3:ncol(chronic)], 2, mean),3),round(apply(chronic[,3:ncol(chronic)], 2, sd),3), sep = "±")
+
+dat_sum <- data.frame(cell=colnames(baseline)[3:ncol(baseline)],Baseline=base_sum, Acute=acute_sum, Chronic=chronic_sum)
+write.table(dat_sum,"./HA18+19_beta_meth_cell_component_summmary.txt", quote = F, row.names = F, sep = "\t")
+
+###eQTL协变量文件
+setwd("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/dat/")
+snp <- read.table("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA.b23.geno", header = T, sep = "\t")
+colnames(snp)
+colnames(snp)[2:ncol(snp)] <- gsub("X","",colnames(snp)[2:ncol(snp)])
+write.table(snp, "./HA18+19_snp.info.txt", row.names = F, quote = F, sep = "\t")
+
+##age
+library(stringr)
+HA18_baseline <- read.csv("./age_dat/2018/Phenotype.Baseline.csv", header = T)
+HA18_baseline<- cbind(sample=paste0("A18HA",str_pad(HA18_baseline$ID,4,pad = "0")), age=HA18_baseline$X3.AGE)
+
+HA18_acute <- read.csv("./age_dat/2018/Phenotype.Acute.csv", header = T)
+HA18_acute<- cbind(sample=paste0("B18HA",str_pad(HA18_acute$ID,4,pad = "0")), age=HA18_acute$X3.AGE, LLS=HA18_acute$LLS.1, AMS=HA18_acute$AMS.1)
+write.table(HA18_acute, "./age_dat/2018/HA18_acute_AMS.info.txt", quote = F, row.names = F, sep = "\t")
+
+HA18_chronic <- read.csv("./age_dat/2018/Phenotype.Chronic.csv", header = T)
+HA18_chronic<- cbind(sample=paste0("C18HA",str_pad(HA18_chronic$ID,4,pad = "0")), age=HA18_chronic$X3.AGE)
+
+HA18_age <- rbind(HA18_baseline, HA18_acute, HA18_chronic)
+write.table(HA18_age,"./age_dat/2018/HA18_age.info.txt", quote = F, row.names = F, sep = "\t")
+
+##HA19
+HA19_all <- read.csv("./age_dat/2019/2019_phenotype.csv", header = T)
+HA19_all <- data.frame(sample=HA19_all$sample_index, age=HA19_all$Age, LLS=HA19_all$LLS, AMS_1=HA19_all$AMS, AMS_2=HA19_all$AMS2)
+HA19_baseline <- HA19_all[grep("A", HA19_all$sample),]
+HA19_baseline$sample <- gsub("A","",HA19_baseline$sample)
+HA19_baseline$sample <- paste0("A19HA",str_pad(HA19_baseline$sample,4,pad = "0"))
+
+HA19_acute <- HA19_all[grep("B", HA19_all$sample),]
+HA19_acute$sample <- gsub("B","",HA19_acute$sample)
+HA19_acute$sample <- paste0("B19HA",str_pad(HA19_acute$sample,4,pad = "0"))
+
+HA19_chronic <- HA19_all[grep("C", HA19_all$sample),]
+HA19_chronic$sample <- gsub("C","",HA19_chronic$sample)
+HA19_chronic$sample <- paste0("C19HA",str_pad(HA19_chronic$sample,4,pad = "0"))
+
+HA19_age <- rbind(HA19_baseline,HA19_acute,HA19_chronic)
+write.table(HA19_age, "./age_dat/2019/HA19_age.info.txt", quote = F, row.names = F, sep = "\t")
+
+##############准备运行eQTL需要的文件
+snp_pos <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/SNP_expression/snp_pos.test.txt", header = F)
+colnames(snp_pos) <- c("chr","pos","snps")
+snp_pos <- snp_pos[,c(3,1,2)]
+
+tmp <- c()
+for (i in 1:nrow(snp_pos)) {
+  if (snp_pos[i,1] == "."){
+    sj = paste(snp_pos[i,2], snp_pos[i,3], sep = "_")
+  }else{
+    sj = snp_pos[i,1]
+  }
+  tmp <- c(tmp,sj)
+}
+head(tmp)
+table(snp$SNP %in% tmp)
+snp$SNP[!(snp$SNP %in% tmp)]
+snp_pos$snps <- tmp
+
+snp_pos2 <- snp_pos
+snp_pos2$snps <- paste(snp_pos$chr, snp_pos$pos, sep = "_")
+
+snp_pos <- rbind(snp_pos, snp_pos2)
+snp_pos <- snp_pos[!duplicated(snp_pos$snps),]
+table(snp$SNP %in% snp_pos$snps)
+write.table(snp_pos, "./position_dat/snps_pos.txt", row.names = F, quote = F, sep = "\t")
+
+HA18_age <- read.table("./age_dat/2018/HA18_age.info.txt", header = T)
+HA19_age <- read.table("./age_dat/2019/HA19_age.info.txt", header = T)
+age <- rbind(HA18_age, HA19_age)
+######baseline
+gene_pos <- read.table("./position_dat/gene_pos.txt", header = T)
+snp_pos <- read.table("./position_dat/snps_pos.txt", header = T)
+snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/dat/HA18+19_snp.info.txt", header = T)
+table(snp$SNP %in% snp_pos$snps) #113986
+# snp$SNP[!(snp$SNP %in% snp_pos$snps)]
+
+snp_baseline <- snp
+colnames(snp_baseline)[2:ncol(snp_baseline)] <- paste0("A",gsub("X","",colnames(snp_baseline)[2:ncol(snp_baseline)]))
+
+exp_baseline <- read.table("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected/HA18_19.baseline.gene.expression.batch_corrected.txt",
+                           header = T)
+table(exp_baseline$genes %in% gene_pos$gene_id)
+
+exp_baseline <- exp_baseline[which(exp_baseline$genes %in% gene_pos$gene_id),]
+table(exp_baseline$genes %in% gene_pos$gene_id) #28709
+###平原期交集人数
+int_base <- intersect(colnames(snp_baseline)[2:ncol(snp_baseline)], colnames(exp_baseline)[2:ncol(exp_baseline)])
+length(int_base)  ### 338
+length(int_base[grep("^A18",int_base)]) ##164
+length(int_base[grep("^A19",int_base)]) ###174
+
+snp <- cbind(snps=snp_baseline$SNP, snp_baseline[,int_base])
+write.table(snp,"../eQTL/baseline/HA18+19_baseline_intersect_snp_eqtl.info.txt", quote = F, row.names = F, sep = "\t")
+exp <- cbind(genes=exp_baseline$genes, exp_baseline[,int_base])
+write.table(exp,"../eQTL/baseline/HA18+19_baseline_intersect_gene_expression_eqtl.info.txt",quote = F, row.names = F, sep = "\t")
+
+#####协变量文件
+table(int_base %in% age$sample)
+int_base[! (int_base %in% age$sample)]
+
+age_baseline <- age[match(int_base, age$sample),]
+age_baseline$sample <- int_base
+library(Hmisc)
+str(age_baseline)
+age_baseline$age <- impute(age_baseline$age,median)
+table(is.na(age_baseline))
+age_baseline <- c("age",age_baseline$age)
+
+cell_cv <- read.table("./cell_split/HA18+19_baseline_gene_expression_cell_spit_ori.cv.txt", header = T)
+cell_cv <- cbind(id=cell_cv$id, cell_cv[,int_base])
+cv <- rbind(cell_cv, age_baseline)
+write.table(cv,"../eQTL/baseline/HA18+19_baseline_intersect_eqtl_cv.info.txt",quote = F, row.names = F, sep = "\t")
+
+
+#################### acute
+snp <- read.table("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/dat/HA18+19_snp.info.txt", header = T)
+table(snp$SNP %in% snp_pos$snps) #113986
+snp_acute <- snp
+colnames(snp_acute)[2:ncol(snp_acute)] <- paste0("B",gsub("X","",colnames(snp_acute)[2:ncol(snp_acute)]))
+
+exp_acute <- read.table("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected/HA18_19.acute.gene.expression.batch_corrected.txt",
+                           header = T)
+table(exp_acute$genes %in% gene_pos$gene_id)
+
+exp_acute <- exp_acute[which(exp_acute$genes %in% gene_pos$gene_id),]
+table(exp_acute$genes %in% gene_pos$gene_id) #28709
+###急性期交集人数
+int_acute <- intersect(colnames(snp_acute)[2:ncol(snp_acute)], colnames(exp_acute)[2:ncol(exp_acute)])
+length(int_acute) #307
+length(int_acute[grep("^B18",int_acute)])  #158
+length(int_acute[grep("^B19",int_acute)])  #149
+
+snp <- cbind(snps=snp_acute$SNP, snp_acute[,int_acute])
+write.table(snp,"../eQTL/acute/HA18+19_acute_intersect_snp_eqtl.info.txt", quote = F, row.names = F, sep = "\t")
+exp <- cbind(genes=exp_acute$genes, exp_acute[,int_acute])
+write.table(exp,"../eQTL/acute/HA18+19_acute_intersect_gene_expression_eqtl.info.txt",quote = F, row.names = F, sep = "\t")
+
+#####协变量文件
+table(int_acute %in% age$sample)
+int_acute[! (int_acute %in% age$sample)]
+
+age_acute <- age[match(int_acute, age$sample),]
+age_acute$sample <- int_acute
+library(Hmisc)
+age_acute$age <- impute(age_acute$age,median)
+table(is.na(age_acute))
+age_acute <- c("age",age_acute$age)
+
+
+cell_cv <- read.table("./cell_split/HA18+19_acute_gene_expression_cell_spit_ori.cv.txt", header = T)
+cell_cv <- cbind(id=cell_cv$id, cell_cv[,int_acute])
+cv <- rbind(cell_cv, age_acute)
+write.table(cv,"../eQTL/acute/HA18+19_acute_intersect_eqtl_cv.info.txt",quote = F, row.names = F, sep = "\t")
+
+
+#################### chronic
+
+snp_chronic <- snp
+colnames(snp_chronic)[2:ncol(snp_chronic)] <- paste0("C",gsub("B","",colnames(snp_chronic)[2:ncol(snp_chronic)]))
+
+exp_chronic <- read.table("/home/xiaokanglong/Desktop/usb/dat/high_altitude/HA2018_2019_combine_batch_corrected/HA18_19.chronic.gene.expression.batch_corrected.txt",
+                        header = T)
+table(exp_chronic$genes %in% gene_pos$gene_id)
+
+exp_chronic <- exp_chronic[which(exp_chronic$genes %in% gene_pos$gene_id),]
+table(exp_chronic$genes %in% gene_pos$gene_id) #28709
+###慢性期交集人数
+int_chronic <- intersect(colnames(snp_chronic)[2:ncol(snp_chronic)], colnames(exp_chronic)[2:ncol(exp_chronic)])
+length(int_chronic) #256
+length(int_chronic[grep("^C18",int_chronic)])  #124
+length(int_chronic[grep("^C19",int_chronic)])  #132
+
+snp <- cbind(snps=snp_chronic$snps, snp_chronic[,int_chronic])
+write.table(snp,"../eQTL/chronic/HA18+19_chronic_intersect_snp_eqtl.info.txt", quote = F, row.names = F, sep = "\t")
+exp <- cbind(genes=exp_chronic$genes, exp_chronic[,int_chronic])
+write.table(exp,"../eQTL/chronic/HA18+19_chronic_intersect_gene_expression_eqtl.info.txt",quote = F, row.names = F, sep = "\t")
+
+#####协变量文件
+table(int_chronic %in% age$sample)
+int_chronic[! (int_chronic %in% age$sample)]
+
+age_chronic <- age[match(int_chronic, age$sample),]
+age_chronic$sample <- int_chronic
+library(Hmisc)
+age_chronic$age <- impute(age_chronic$age,median)
+table(is.na(age_chronic))
+age_chronic <- c("age",age_chronic$age)
+
+cell_cv <- read.table("./cell_split/HA18+19_chronic_gene_expression_cell_spit_ori.cv.txt", header = T)
+cell_cv <- cbind(id=cell_cv$id, cell_cv[,int_chronic])
+cv <- rbind(cell_cv, age_chronic)
+write.table(cv,"../eQTL/chronic/HA18+19_chronic_intersect_eqtl_cv.info.txt",quote = F, row.names = F, sep = "\t")
+
