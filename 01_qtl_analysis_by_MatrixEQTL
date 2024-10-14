@@ -1,0 +1,64 @@
+library("MatrixEQTL")
+
+base.dir = "./"
+
+useModel = modelLINEAR
+
+SNP_file_name = paste(base.dir, "HA19_acute.snp.info.txt", sep="")
+SNP_file = data.table::fread(SNP_file_name, header=T)
+snps = SlicedData$new()
+snps$fileDelimiter = "\t"
+snps$fileOmitCharacters = "NA"
+snps$fileSkipRows = 1 
+snps$fileSkipColumns = 1 
+snps$fileSliceSize = 2000
+snps$LoadFile( SNP_file_name )
+
+expression_file_name = paste(base.dir, "HA19_acute.gene_expression_scaled.txt", sep="")
+expression_file = data.table::fread(expression_file_name, header=T)
+gene = SlicedData$new()
+gene$fileDelimiter = "\t"
+gene$fileOmitCharacters = "NA"
+gene$fileSkipRows = 1 
+gene$fileSkipColumns = 1 
+gene$fileSliceSize = 2000
+gene$LoadFile(expression_file_name)
+
+covariates_file = data.table::fread(covariates_file_name, header=T)
+cvrt = SlicedData$new()
+cvrt$fileDelimiter = "\t"
+cvrt$fileOmitCharacters = "NA"
+cvrt$fileSkipRows = 1 
+cvrt$fileSkipColumns = 1 
+cvrt$fileSliceSize = 2000
+cvrt$LoadFile( covariates_file_name )
+
+output_file_name = tempfile()
+pvOutputThreshold = 1e-2
+errorCovariance = numeric()
+
+me = Matrix_eQTL_main(
+  snps = snps,
+  gene = gene,
+  cvrt = cvrt,
+  output_file_name = output_file_name,
+  pvOutputThreshold = pvOutputThreshold,
+  useModel = useModel,
+  errorCovariance = errorCovariance,
+  #snpspos = snpspos,
+  #genepos = genepos,
+  verbose = TRUE,
+  pvalue.hist = TRUE,
+  min.pv.by.genesnp = FALSE,
+  noFDRsaveMemory = FALSE)
+#save(me,file="me.rda")
+
+qtl=me$all$eqtls
+
+dfFull=me$param$dfFull
+tstat=me$all$eqtls$statistic
+r=tstat/sqrt(dfFull + tstat^2)
+qtl$r=r
+qtl=qtl[qtl$FDR < 0.05,]
+write.table(qtl, "HA19_acute.eqtl.cv_all.txt", quote=F,row.names=F,sep="\t")
+
