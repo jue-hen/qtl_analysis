@@ -1,0 +1,682 @@
+######eQTL plot
+setwd("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/eQTL/result/add_age")
+
+library(readr)
+
+base.raw=read_table("HA18+19_baseline.eqtl_cis.txt")
+acute.raw=read_table("HA18+19_acute.eqtl_cis.txt")
+chronic.raw=read_table("HA18+19_chronic.eqtl_cis.txt")
+
+
+##############
+
+base.raw$pair=paste(base.raw$snps, base.raw$gene)
+acute.raw$pair=paste(acute.raw$snps, acute.raw$gene)
+chronic.raw$pair=paste(chronic.raw$snps, chronic.raw$gene)
+
+##########
+##venn plots
+library(grid)
+library(futile.logger)
+library(VennDiagram)
+library(RColorBrewer)
+library(ggsci)
+card=pal_npg("nrc")(10)[c(3,1,2)]
+
+venn.plot=venn.diagram(x=list(
+  `Baseline\nCis-eQTLs`=unique(base.raw$pair),
+  `Acute\nCis-eQTLs`=unique(acute.raw$pair),
+  `Chronic\nCis-eQTLs`=unique(chronic.raw$pair)),
+  "./plot/eQTL.Cis_Venn.tiff", height = 900, width = 900,
+  resolution = 300,
+  imagetype = "tiff",
+  alpha=0.8,
+  fill=card,
+  #label.col=c("darkred","white","darkblue","white","white","white","darkgreen"),
+  cex=0.8,
+  fontfamily="serif",
+  fontface="bold",
+  cat.default.pos="text",
+  cat.col="white",
+  cat.cex=0.8,
+  cat.fontsize="bold",
+  cat.dist=c(0.1,0.1,-0.08),
+  cat.pos=c(15,-15,0))
+print(venn.plot)
+###################
+##########################
+
+acute.gene=unique(acute.raw$gene)
+acute.gene=acute.gene[!acute.gene %in% base.raw$gene]
+length(acute.gene)
+chronic.gene=unique(chronic.raw$gene)
+chronic.gene=chronic.gene[!chronic.gene %in% base.raw$gene]
+length(chronic.gene)
+
+write.csv(acute.gene, "Acute_unique.eQTL.genes.csv",quote = F, row.names = F)
+write.csv(chronic.gene, "Chronic_unique.eQTL.genes.csv", quote = F, row.names = F)
+
+venn.plot=venn.diagram(x=list(
+  `Baseline\nGenes`=unique(base.raw$gene),
+  `Acute\nGenes`=unique(acute.raw$gene),
+  `Chronic\nGenes`=unique(chronic.raw$gene)),
+  "./plot/Genes.Cis_Venn.tiff", height = 900, width = 900,
+  disable.logging = T,
+  resolution = 300,
+  imagetype = "tiff",
+  alpha=0.8,
+  fill=card,
+  #label.col=c("darkred","white","darkblue","white","white","white","darkgreen"),
+  cex=0.8,
+  fontfamily="serif",
+  fontface="bold",
+  cat.default.pos="text",
+  cat.col="white",
+  cat.cex=0.8,
+  cat.fontsize="bold",
+  cat.dist=c(0.1,0.1,-0.08),
+  cat.pos=c(15,-15,0))
+
+###################
+###########################
+pd=data.frame(r2=c(base.raw$r*base.raw$r, acute.raw$r*acute.raw$r, chronic.raw$r*chronic.raw$r),
+              Periods=c(rep("Baseline",nrow(base.raw)),
+                        rep("Acute", nrow(acute.raw)),
+                        rep("Chronic", nrow(chronic.raw))))
+pd$Periods=factor(pd$Periods, levels = unique(pd$Periods))
+quantile(pd$r2)
+#pd$rg=cut(pd$r2, breaks=quantile(pd$r2),include.lowest=T, right=T)
+pd$rg=cut(pd$r2, breaks=c(0,0.1,0.2,1))
+table(pd$rg)
+
+library(ggplot2)
+pdf("./plot/Stat_eQTL_R2.pdf", height = 4, width = 5)
+ggplot()+
+  geom_bar(data=pd, aes(rg,fill=Periods), stat="count", position="dodge", width=0.8)+
+  geom_text(data=pd, aes(x=rg, y=..count.., group=Periods, label=..count..),
+            stat='count', vjust=-0.1, size=3,
+            position=position_dodge(width=0.8))+
+  scale_fill_manual(values=pal_npg("nrc")(10)[c(3,1,2)])+
+  theme_classic()+
+  ylab("Numbers of eQTL")+
+  xlab("Rsquare of eQTL")+
+  theme(#legend.position = "None",
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 1.5),
+    axis.title  = element_text(size=14),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size=14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12))
+dev.off()
+
+##################
+library(ggpubr)
+library(gghalves)
+library(tidyverse)
+ss=pd %>% 
+  group_by(Periods) %>% 
+  summarise(m=mean(r2), s=sd(r2))
+
+pdf("./plot/Stat_eQTL_boxplot.pdf", height = 4, width = 4)
+ggplot(data = pd, aes(x=Periods, y=r2))+
+  geom_violin(data = pd, aes(x=Periods, y=r2, fill=Periods))+
+  geom_boxplot(fill="white", width=0.2, outlier.colour = NA)+
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)])+
+  stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                        c("Acute","Chronic"),
+                                        c("Baseline","Chronic")))+
+  geom_text(data = ss,aes(Periods, y=0.05,
+                          label=paste(sprintf("%.3f",m), sprintf("%.3f",s), sep = "±")),
+            size=3, hjust=0.5)+
+  theme_classic()+
+  scale_y_continuous(expand = c(0.01,0.05))+
+  ylab("Rsquare of eQTL")+xlab("")+
+  theme(legend.position = "None",
+        axis.text.x = element_text(size=12),
+        axis.title = element_text(size = 14),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1.5))
+dev.off()
+
+###############
+pd$delta1=pd$r2-pd$r1
+pd$delta1=cut(pd$delta1,breaks=c(0,0.05,0.1,0.5))
+table(pd$delta1)
+unique(pd$genes[which(pd$r2-pd$r1>0.1)])
+levels(pd$delta1)=c("0-0.05","0.05-0.1",">0.1")
+
+pd1=pd[cis %in% c(paste(acute$cpgs,acute$Symbol), paste(base$cpgs,base$Symbol)),]
+dim(pd1)
+
+pd2=pd[cis %in% c(paste(chronic$cpgs, chronic$Symbol), paste(base$cpgs,base$Symbol)),]
+dim(pd2)
+
+table(pd1$delta1)
+table(pd1$delta1)/sum(as.numeric(table(pd1$delta1)))
+
+
+####################
+###############################################
+pd$delta2=pd$r3-pd$r1
+pd$delta2=cut(pd$delta2, breas=c(0,0.05,0.1,0.5))
+table(pd$delta2)
+pd[which(pd$r3 - pd$r1 > 0.15),]
+sort(unique(pd$gene[which(pd$r3-pd$r2 > 0.1)]))
+
+levels(pd$delta2)=c("0-0.05","0.05-0.1",">0.1")
+table(pd$delta2)
+table(pd$delta2)/sum(as.numeric(table(pd$delta2)))
+
+################################################
+cis=unique(c(base.raw$pair, acute.raw$pair, chronic.raw$pair))
+length(cis)
+
+all_idx <- read.table("./three_period_sig.eQTL.txt", header = T, sep = "\t")
+base.all <- read.table("./all_sig_three/HA18+19_baseline.eqtl_all_sig_in_three.txt", sep = "\t", header = T)
+table(cis %in% base.all$idx)
+acute.all <- read.table("./all_sig_three/HA18+19_acute.eqtl_all_sig_in_three.txt", sep = "\t", header = T)
+table(cis %in% acute.all$idx)
+chronic.all <- read.table("./all_sig_three/HA18+19_chronic.eqtl_all_sig_in_three.txt", sep = "\t", header = T)
+table(cis %in% chronic.all$idx)
+
+base.raw1=base.all[match(cis,base.all$idx),]
+acute.raw1=acute.all[match(cis, acute.all$idx),]
+chronic.raw1=chronic.all[match(cis, chronic.all$idx),]
+# base.raw1 <- na.omit(base.raw1)
+# acute.raw1 <- na.omit(acute.raw1)
+# chronic.raw1 <- na.omit(chronic.raw1)
+#################
+pd=data.frame(snps=base.raw1$snps,
+              genes=base.raw1$gene,
+              base=base.raw1$beta,
+              acute=acute.raw1$beta,
+              chronic=chronic.raw1$beta,
+              r1=base.raw1$r*base.raw1$r,
+              r2=acute.raw1$r*acute.raw1$r,
+              r3=chronic.raw1$r*chronic.raw1$r)
+pd$ty=rep("Others", nrow(pd))
+pd$ty[cis %in% paste(acute.raw$snps, acute.raw$gene) & !(cis %in% paste(base.raw$snps, base.raw$gene))]="Acute induced"
+table(pd$ty)
+pd$ty1=rep("Others", nrow(pd))
+pd$ty1[cis %in% paste(chronic.raw$snps, chronic.raw$gene) & !(cis %in% paste(base.raw$snps, base.raw$gene))]="Chronic induced"
+table(pd$ty1)
+
+library(ggthemes)
+
+pd1=pd[cis %in% c(paste(acute.raw$snps, acute.raw$gene), paste(base.raw$snps, base.raw$gene)),]
+dim(pd1)
+
+pd2=pd[cis %in% c(paste(chronic.raw$snps, chronic.raw$gene), paste(base.raw$snps, base.raw$gene)),]
+dim(pd2)
+
+
+pd <- na.omit(pd)
+pd1 <- na.omit(pd1)
+pd2 <- na.omit(pd2)
+range(pd$base)
+range(pd$acute)
+range(pd$chronic)
+
+cor.test(pd$base, pd$acute, method = "spearman")
+
+range(pd1$base)
+range(pd1$acute)
+pdf("./plot/Stat.eQTL.acute.beta.pdf", height = 3, width = 4)
+ggplot(pd, aes(base, acute))+
+  geom_point(aes(color=ty), size=1)+
+  geom_segment(x=2,y=2,xend=-2.2,yend=-2.2,linetype="dashed",color="black",size=0.2)+
+  geom_hline(yintercept = 0, linetype="dashed",color="black",size=0.5)+
+  geom_vline(xintercept = 0, linetype="dashed", color="black",size=0.5)+
+  theme_few()+
+  scale_color_npg()+
+  scale_x_continuous(limits = c(-2.2,2.2))+
+  scale_y_continuous(limits = c(-2.2,2.2))+
+  stat_cor(method = "spearman",
+           output.type = "text",
+           aes(label=paste(..rr.label.., "N=4494", sep = "\n")), size = 3)+
+  ylab("eQTL effect size(Acute)")+
+  xlab("eQTL effect size(Baseline)")+
+  theme(legend.position = c(0.75,0.3),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=12))
+dev.off()
+
+nrow(pd)
+nrow(pd1)
+nrow(pd2)
+
+############
+range(pd2$base)
+range(pd2$chronic)
+dim(pd2)
+
+pdf("./plot/Stat.eQTL.chronic.beta.pdf", height = 3, width = 4)
+ggplot(pd, aes(base, chronic))+
+  geom_point(aes(color=ty1), size=1)+
+  geom_segment(x=2,y=2,xend=-2,yend=-2,linetype="dashed",color="black",size=0.2)+
+  geom_hline(yintercept = 0, linetype="dashed", color="black",size=0.5)+
+  geom_vline(xintercept = 0, linetype="dashed", color="black",size=0.5)+
+  theme_few()+
+  scale_color_npg()+
+  scale_x_continuous(limits=c(-2.3,2.3))+
+  scale_y_continuous(limits = c(-2.3,2.3))+
+  stat_cor(method = "spearman",
+           output.type = "text",
+           aes(label=paste(..rr.label..,"N=4494", sep = "\n")), size= 3)+
+  ylab("eQTL effect size (chronic)")+
+  xlab("eQTL effect size (Baseline)")+
+  theme(legend.position = c(0.75,0.3),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=12))
+dev.off()
+
+########################meQTL
+
+setwd("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/meQTL/dat")
+age <- read.table("./HA18+19_age_info.txt", header = T)
+######baseline
+cpg_pos <- read.table("./cpg_pos.txt", header = T)
+snp_pos <- read.table("./snps_pos.txt", header = T)
+snp <- read.table("./HA18+19_snp.info.txt", header = T)
+table(snp$SNP %in% snp_pos$snps) 
+
+
+snp_baseline <- snp
+colnames(snp_baseline)[2:ncol(snp_baseline)] <- paste0("A",gsub("X","",colnames(snp_baseline)[2:ncol(snp_baseline)]))
+
+library(readr)
+exp_baseline <- read_delim("./HA18_19.baseline.meth.beta.batch_corrected.txt",col_names = T, delim = "\t")
+table(exp_baseline$cpgs %in% cpg_pos$cpgs)
+
+###平原期交集人数
+int_base <- intersect(colnames(snp_baseline)[2:ncol(snp_baseline)], colnames(exp_baseline)[2:ncol(exp_baseline)])
+length(int_base)  ### 306
+length(int_base[grep("^A18",int_base)]) ##99
+length(int_base[grep("^A19",int_base)]) ###207
+
+snp <- cbind(snps=snp_baseline$SNP, snp_baseline[,int_base])
+write.table(snp,"./HA18+19_baseline_intersect_snp_meqtl.info.txt", quote = F, row.names = F, sep = "\t")
+exp <- cbind(cpgs=exp_baseline$cpgs, exp_baseline[,int_base])
+write.table(exp,"./HA18+19_baseline_intersect_beta_meth_meqtl.info.txt",quote = F, row.names = F, sep = "\t")
+write.table(int_base,"./baseline_intersect_sample.txt", row.names = F, quote = F ,sep = "\t")
+
+#####协变量文件
+int_base <- read.table("./baseline_intersect_sample.txt", header = T)
+int_base <- int_base$x
+table(int_base %in% age$sample)
+int_base[! (int_base %in% age$sample)]
+
+age_baseline <- age[match(int_base, age$sample),]
+age_baseline$sample <- int_base
+library(Hmisc)
+str(age_baseline)
+age_baseline$age <- impute(age_baseline$age,median)
+table(is.na(age_baseline))
+
+
+cell_cv <- read.table("./HA18+19_baseline.meth_beta.cell_spit_ori.txt", header = T, row.names = 1)
+cell_cv <- cbind(cell_cv[int_base,-7], age=age_baseline$age)
+cv <- as.data.frame(t(cell_cv))
+cv <- cbind(id=rownames(cv),cv)
+write.table(cv,"./HA18+19_baseline_intersect_meqtl_cv.info.txt",quote = F, row.names = F, sep = "\t")
+
+
+#################### acute
+snp <- read.table("./HA18+19_snp.info.txt", header = T)
+table(snp$SNP %in% snp_pos$snps) #113986
+snp_acute <- snp
+colnames(snp_acute)[2:ncol(snp_acute)] <- paste0("B",gsub("X","",colnames(snp_acute)[2:ncol(snp_acute)]))
+
+exp_acute <- read_delim("./HA18_19.acute.meth.beta.batch_corrected.txt",col_names = T, delim = "\t")
+table(exp_acute$cpgs %in% cpg_pos$cpgs)
+
+###急性期交集人数
+int_acute <- intersect(colnames(snp_acute)[2:ncol(snp_acute)], colnames(exp_acute)[2:ncol(exp_acute)])
+length(int_acute)  ### 306
+length(int_acute[grep("^B18",int_acute)]) ##99
+length(int_acute[grep("^B19",int_acute)]) ###207
+
+snp <- cbind(snps=snp_acute$SNP, snp_acute[,int_acute])
+write.table(snp,"./HA18+19_acute_intersect_snp_meqtl.info.txt", quote = F, row.names = F, sep = "\t")
+exp <- cbind(cpgs=exp_acute$cpgs, exp_acute[,int_acute])
+write.table(exp,"./HA18+19_acute_intersect_beta_meth_meqtl.info.txt",quote = F, row.names = F, sep = "\t")
+write.table(int_acute,"./acute_intersect_sample.txt", row.names = F, quote = F ,sep = "\t")
+
+#####协变量文件
+int_acute <- read.table("./acute_intersect_sample.txt", header = T)
+int_acute <- int_acute$x
+table(int_acute %in% age$sample)
+int_acute[! (int_acute %in% age$sample)]
+
+age_acute <- age[match(int_acute, age$sample),]
+age_acute$sample <- int_acute
+library(Hmisc)
+str(age_acute)
+age_acute$age <- impute(age_acute$age,median)
+table(is.na(age_acute))
+
+
+cell_cv <- read.table("./HA18+19_acute.meth_beta.cell_spit_ori.txt", header = T, row.names = 1)
+cell_cv <- cbind(cell_cv[int_acute,-7], age=age_acute$age)
+cv <- as.data.frame(t(cell_cv))
+cv <- cbind(id=rownames(cv),cv)
+write.table(cv,"./HA18+19_acute_intersect_meqtl_cv.info.txt",quote = F, row.names = F, sep = "\t")
+
+
+#################### chronic
+
+snp <- read.table("./HA18+19_snp.info.txt", header = T)
+table(snp$SNP %in% snp_pos$snps) #113986
+snp_chronic <- snp
+colnames(snp_chronic)[2:ncol(snp_chronic)] <- paste0("C",gsub("X","",colnames(snp_chronic)[2:ncol(snp_chronic)]))
+
+exp_chronic <- read_delim("./HA18_19.chronic.meth.beta.batch_corrected.txt",col_names = T, delim = "\t")
+table(exp_chronic$cpgs %in% cpg_pos$cpgs)
+
+###慢性期交集人数
+int_chronic <- intersect(colnames(snp_chronic)[2:ncol(snp_chronic)], colnames(exp_chronic)[2:ncol(exp_chronic)])
+length(int_chronic)  ### 287
+length(int_chronic[grep("^C18",int_chronic)]) ##99
+length(int_chronic[grep("^C19",int_chronic)]) ###188
+
+snp <- cbind(snps=snp_chronic$SNP, snp_chronic[,int_chronic])
+write.table(snp,"./HA18+19_chronic_intersect_snp_meqtl.info.txt", quote = F, row.names = F, sep = "\t")
+exp <- cbind(cpgs=exp_chronic$cpgs, exp_chronic[,int_chronic])
+write.table(exp,"./HA18+19_chronic_intersect_beta_meth_meqtl.info.txt",quote = F, row.names = F, sep = "\t")
+write.table(int_chronic,"./chronic_intersect_sample.txt", row.names = F, quote = F ,sep = "\t")
+
+#####协变量文件
+int_chronic <- read.table("./chronic_intersect_sample.txt", header = T)
+int_chronic <- int_chronic$x
+table(int_chronic %in% age$sample)
+int_chronic[! (int_chronic %in% age$sample)]
+
+age_chronic <- age[match(int_chronic, age$sample),]
+age_chronic$sample <- int_chronic
+library(Hmisc)
+str(age_chronic)
+age_chronic$age <- impute(age_chronic$age,median)
+table(is.na(age_chronic))
+
+
+cell_cv <- read.table("./HA18+19_chronic.meth_beta.cell_spit_ori.txt", header = T, row.names = 1)
+cell_cv <- cbind(cell_cv[int_chronic,-7], age=age_chronic$age)
+cv <- as.data.frame(t(cell_cv))
+cv <- cbind(id=rownames(cv),cv)
+write.table(cv,"./HA18+19_chronic_intersect_meqtl_cv.info.txt",quote = F, row.names = F, sep = "\t")
+
+
+#########meQTL plot
+setwd("/home/xiaokanglong/Desktop/usb/project/eQTL_eQTM/new_QTL_analysis/meQTL/result")
+
+library(readr)
+
+base.raw=read_table("HA18+19_baseline.cis_meqtl.txt")
+acute.raw=read_table("HA18+19_acute.cis_meqtl.txt")
+chronic.raw=read_table("HA18+19_chronic.cis_meqtl.txt")
+
+
+##############
+
+base.raw$pair=paste(base.raw$snps, base.raw$gene)
+acute.raw$pair=paste(acute.raw$snps, acute.raw$gene)
+chronic.raw$pair=paste(chronic.raw$snps, chronic.raw$gene)
+
+##########
+##venn plots
+library(grid)
+library(futile.logger)
+library(VennDiagram)
+library(RColorBrewer)
+library(ggsci)
+card=pal_npg("nrc")(10)[c(3,1,2)]
+
+venn.plot=venn.diagram(x=list(
+  `Baseline\nCis-meQTLs`=unique(base.raw$pair),
+  `Acute\nCis-meQTLs`=unique(acute.raw$pair),
+  `Chronic\nCis-meQTLs`=unique(chronic.raw$pair)),
+  "./plot/meQTL.Cis_Venn.tiff", height = 900, width = 900,
+  resolution = 300,
+  imagetype = "tiff",
+  alpha=0.8,
+  fill=card,
+  #label.col=c("darkred","white","darkblue","white","white","white","darkgreen"),
+  cex=0.8,
+  fontfamily="serif",
+  fontface="bold",
+  cat.default.pos="text",
+  cat.col="white",
+  cat.cex=0.8,
+  cat.fontsize="bold",
+  cat.dist=c(0.1,0.1,-0.08),
+  cat.pos=c(15,-15,0))
+print(venn.plot)
+###################
+##########################
+
+acute.gene=unique(acute.raw$gene)
+acute.gene=acute.gene[!acute.gene %in% base.raw$gene]
+length(acute.gene)
+chronic.gene=unique(chronic.raw$gene)
+chronic.gene=chronic.gene[!chronic.gene %in% base.raw$gene]
+length(chronic.gene)
+
+write.csv(acute.gene, "Acute_unique.meQTL.cpgs.csv",quote = F, row.names = F)
+write.csv(chronic.gene, "Chronic_unique.meQTL.cpgs.csv", quote = F, row.names = F)
+
+venn.plot=venn.diagram(x=list(
+  `Baseline\nCpgs`=unique(base.raw$gene),
+  `Acute\nCpgs`=unique(acute.raw$gene),
+  `Chronic\nCpgs`=unique(chronic.raw$gene)),
+  "./plot/Cpgs.Cis_Venn.tiff", height = 900, width = 900,
+  disable.logging = T,
+  resolution = 300,
+  imagetype = "tiff",
+  alpha=0.8,
+  fill=card,
+  #label.col=c("darkred","white","darkblue","white","white","white","darkgreen"),
+  cex=0.8,
+  fontfamily="serif",
+  fontface="bold",
+  cat.default.pos="text",
+  cat.col="white",
+  cat.cex=0.8,
+  cat.fontsize="bold",
+  cat.dist=c(0.1,0.1,-0.08),
+  cat.pos=c(15,-15,0))
+
+###################
+###########################
+pd=data.frame(r2=c(base.raw$r*base.raw$r, acute.raw$r*acute.raw$r, chronic.raw$r*chronic.raw$r),
+              Periods=c(rep("Baseline",nrow(base.raw)),
+                        rep("Acute", nrow(acute.raw)),
+                        rep("Chronic", nrow(chronic.raw))))
+pd$Periods=factor(pd$Periods, levels = unique(pd$Periods))
+quantile(pd$r2)
+#pd$rg=cut(pd$r2, breaks=quantile(pd$r2),include.lowest=T, right=T)
+pd$rg=cut(pd$r2, breaks=c(0,0.1,0.2,1))
+table(pd$rg)
+
+library(ggplotify)
+library(ggplot2)
+pdf("./plot/Stat_meQTL_R2.pdf", height = 4, width = 5)
+ggplot()+
+  geom_bar(data=pd, aes(rg,fill=Periods), stat="count", position="dodge", width=0.9)+
+  geom_text(data=pd, aes(x=rg, y=..count.., group=Periods, label=..count..),
+            stat='count', vjust=-0.1, size=2,
+            position=position_dodge(width=0.9))+
+  scale_fill_manual(values=pal_npg("nrc")(10)[c(3,1,2)])+
+  theme_classic()+
+  ylab("Numbers of meQTL")+
+  xlab("Rsquare of meQTL")+
+  theme(#legend.position = "None",
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 1.5),
+    axis.title  = element_text(size=14),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size=14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12))
+dev.off()
+
+##################
+library(ggpubr)
+library(gghalves)
+library(tidyverse)
+ss=pd %>% 
+  group_by(Periods) %>% 
+  summarise(m=mean(r2), s=sd(r2))
+
+pdf("./plot/Stat_meQTL_boxplot.pdf", height = 5, width = 5)
+ggplot(data = pd, aes(x=Periods, y=r2))+
+  geom_violin(data = pd, aes(x=Periods, y=r2, fill=Periods))+
+  geom_boxplot(fill="white", width=0.2, outlier.colour = NA)+
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)])+
+  stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                        c("Acute","Chronic"),
+                                        c("Baseline","Chronic")))+
+  geom_text(data = ss,aes(Periods, y=0.05,
+                          label=paste(sprintf("%.3f",m), sprintf("%.3f",s), sep = "±")),
+            size=3, hjust=0.5)+
+  theme_classic()+
+  scale_y_continuous(expand = c(0.01,0.05))+
+  ylab("Rsquare of meQTL")+xlab("")+
+  theme(legend.position = "None",
+        axis.text.x = element_text(size=12),
+        axis.title = element_text(size = 14),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1.5))
+dev.off()
+
+###############
+pd$delta1=pd$r2-pd$r1
+pd$delta1=cut(pd$delta1,breaks=c(0,0.05,0.1,0.5))
+table(pd$delta1)
+unique(pd$genes[which(pd$r2-pd$r1>0.1)])
+levels(pd$delta1)=c("0-0.05","0.05-0.1",">0.1")
+
+pd1=pd[cis %in% c(paste(acute$cpgs,acute$Symbol), paste(base$cpgs,base$Symbol)),]
+dim(pd1)
+
+pd2=pd[cis %in% c(paste(chronic$cpgs, chronic$Symbol), paste(base$cpgs,base$Symbol)),]
+dim(pd2)
+
+table(pd1$delta1)
+table(pd1$delta1)/sum(as.numeric(table(pd1$delta1)))
+
+
+####################
+###############################################
+pd$delta2=pd$r3-pd$r1
+pd$delta2=cut(pd$delta2, breas=c(0,0.05,0.1,0.5))
+table(pd$delta2)
+pd[which(pd$r3 - pd$r1 > 0.15),]
+sort(unique(pd$gene[which(pd$r3-pd$r2 > 0.1)]))
+
+levels(pd$delta2)=c("0-0.05","0.05-0.1",">0.1")
+table(pd$delta2)
+table(pd$delta2)/sum(as.numeric(table(pd$delta2)))
+
+################################################
+cis=unique(c(base.raw$pair, acute.raw$pair, chronic.raw$pair))
+length(cis)
+
+base.all <- read_table("../scatter_plot/HA18_19_baseline.eqtl.txt")
+base.all$pair <- paste(base.all$snps, base.all$gene)
+table(cis %in% base.all$pair)
+acute.all <- read_table("../scatter_plot/HA18_19_acute.eqtl.txt")
+acute.all$pair <- paste(acute.all$snps, acute.all$gene)
+table(cis %in% acute.all$pair)
+chronic.all <- read_table("../scatter_plot/HA18_19_chronic.eqtl.txt")
+chronic.all$pair <- paste(chronic.all$snps, chronic.all$gene)
+table(cis %in% chronic.all$pair)
+
+base.raw1=base.all[match(cis,base.all$pair),]
+acute.raw1=acute.all[match(cis, acute.all$pair),]
+chronic.raw1=chronic.all[match(cis, chronic.all$pair),]
+# base.raw1 <- na.omit(base.raw1)
+# acute.raw1 <- na.omit(acute.raw1)
+# chronic.raw1 <- na.omit(chronic.raw1)
+#################
+pd=data.frame(snps=base.raw1$snps,
+              genes=base.raw1$gene,
+              base=base.raw1$beta,
+              acute=acute.raw1$beta,
+              chronic=chronic.raw1$beta,
+              r1=base.raw1$r*base.raw1$r,
+              r2=acute.raw1$r*acute.raw1$r,
+              r3=chronic.raw1$r*chronic.raw1$r)
+pd$ty=rep("Others", nrow(pd))
+pd$ty[cis %in% paste(acute.raw$snps, acute.raw$gene) & !(cis %in% paste(base.raw$snps, base.raw$gene))]="Acute induced"
+pd$ty1=rep("Others", nrow(pd))
+pd$ty1[cis %in% paste(chronic.raw$snps, chronic.raw$gene) & !(cis %in% paste(base.raw$snps, base.raw$gene))]="Chronic induced"
+
+library(ggthemes)
+
+pd1=pd[cis %in% c(paste(acute.raw$snps, acute.raw$gene), paste(base.raw$snps, base.raw$gene)),]
+dim(pd1)
+
+pd2=pd[cis %in% c(paste(chronic.raw$snps, chronic.raw$gene), paste(base.raw$snps, base.raw$gene)),]
+dim(pd2)
+
+
+pd <- na.omit(pd)
+pd1 <- na.omit(pd1)
+pd2 <- na.omit(pd2)
+range(pd$base)
+range(pd$acute)
+range(pd$chronic)
+
+cor.test(pd$base, pd$acute, method = "spearson")
+
+pdf("./plot_result/Stat.eQTL.acute.beta.pdf", height = 3, width = 4)
+ggplot(pd, aes(base, acute))+
+  geom_point(aes(color=ty), size=1)+
+  geom_segment(x=2,y=2,xend=-2,yend=-2,linetype="dashed",color="black",size=0.2)+
+  geom_hline(yintercept = 0, linetype="dashed",color="black",size=0.5)+
+  geom_vline(xintercept = 0, linetype="dashed", color="black",size=0.5)+
+  theme_few()+
+  scale_color_npg()+
+  scale_x_continuous(limits = c(-2,2))+
+  scale_y_continuous(limits = c(-2,2))+
+  stat_cor(method = "spearman",
+           output.type = "text",
+           aes(label=paste(..rr.label.., "N=3884", sep = "\n")), size = 3)+
+  ylab("eQTL effect size(Acute)")+
+  xlab("eQTL effect size(Baseline)")+
+  theme(legend.position = c(0.75,0.3),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=12))
+dev.off()
+
+nrow(pd)
+nrow(pd1)
+nrow(pd2)
+
+############
+range(pd$base)
+range(pd$chronic)
+pdf("./plot_result/Stat.eQTL.chronic.beta.pdf", height = 3, width = 4)
+ggplot(pd, aes(base, chronic))+
+  geom_point(aes(color=ty1), size=1)+
+  geom_segment(x=2,y=2,xend=-2,yend=-2,linetype="dashed",color="black",size=0.2)+
+  geom_hline(yintercept = 0, linetype="dashed", color="black",size=0.5)+
+  geom_vline(xintercept = 0, linetype="dashed", color="black",size=0.5)+
+  theme_few()+
+  scale_color_npg()+
+  scale_x_continuous(limits=c(-2,2))+
+  scale_y_continuous(limits = c(-2,2))+
+  stat_cor(method = "spearman",
+           output.type = "text",
+           aes(label=paste(..rr.label..,"N=3884", sep = "\n")), size= 3)+
+  ylab("eQTL effect size (chronic)")+
+  xlab("eQTL effect size (Baseline)")+
+  theme(legend.position = c(0.75,0.3),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=12))
+dev.off()
