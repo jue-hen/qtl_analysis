@@ -1,0 +1,76 @@
+####extract cis sites
+f1=open("/home/xkl/eQTM/HA19_Cpgs.pos.txt")
+f2=open("/home/xkl/eQTM/HA19_gene.pos.txt")
+
+dc1={}
+dc2={}
+l=f1.readline()
+for i in f1.readlines():
+    s=i.strip().split()
+    dc1[s[0]]=s[1]
+    dc2[s[0]]=int(s[2])
+
+dg1={}
+dg2={}
+l=f2.readline()
+
+for i in f2.readlines():
+    s=i.strip().split()
+    dg1[s[0]]=s[1]
+    dg2[s[0]]=[int(s[2]),int(s[3])]
+
+t=len(dg1)*len(dc1)
+import sys
+
+#f3=open("/home/xkl/eQTM/Acute/HA19_acute_qtl.txt")
+f3=open(sys.argv[1])
+
+l=f3.readline()
+print(l.strip()+"\t"+"FDR")
+r=1
+while 1:
+    l=f3.readline()
+    r=r+1
+    if not l: break
+    s=l.strip().split()
+    k=0
+    fdr=float(s[-2])*t/r
+    if fdr > 0.05: break
+    if s[2] not in dg1: continue
+    if dc1[s[0]] != dg1[s[2]]: continue
+    if dc2[s[0]]>dg2[s[2]][0] and dc2[s[0]]<dg2[s[2]][1]: k=1
+    if min(abs(dc2[s[0]]-dg2[s[2]][0]),abs(dc2[s[0]]-dg2[s[2]][1])) < 1000000: k=1
+    if k==1:
+        print(l.strip()+"\t"+ '{:.3e}'.format(fdr))
+
+
+#####extract trans sites
+
+f1=open("HA2019.cis.eQTM.tsv")
+
+dc=[]
+l=f1.readline()
+for i in f1.readlines():
+    s=i.strip().split()
+    dc.append(s[0]+" "+s[2])
+dc=set(dc)
+
+import sys
+
+#f3=open("/home/xkl/eQTM/Acute/HA19_acute_qtl.txt")
+f3=open(sys.argv[1])
+
+l=f3.readline()
+print(l.strip())
+#print(l.strip()+"\t"+"FDR")
+
+r=1
+while 1:
+    l=f3.readline()
+    r=r+1
+    s=l.strip().split()
+    k=s[0]+" "+s[2]
+    if k in dc: continue
+    if float(s[-2]) > 5e-08: break
+    print(l.strip())
+                
