@@ -110,6 +110,47 @@ cal_res <- function(k){
   res
 }
 
+###或者选择回归来进行筛选
+cal_res <- function(k){
+  res=data.frame()
+  p.thres=0.05
+  g=gene.bed$gene_id[k]
+  gb=gene.bed[k,]
+  idx=gb$gene_entrezid
+  gexp=as.numeric(exp[rownames(exp)==idx,])
+  cpgs.overlapped=subsetByOverlaps(cpg.bed,gb,maxgap = 1000000)
+
+  cpgs.meth=meth[meth$ID %in% cpgs.overlapped$IlmnID,]
+  #p=apply(cpgs.meth, 1, function(x) cor.test(as.numeric(x[2:ncol(cpgs.meth)]),
+  #                                           gexp,method = "spearman")$p.value)
+
+  if(nrow(cpgs.meth)==0) { return(res) }
+
+  ps=apply(cpgs.meth,1,function(x) cor.test(as.numeric(x[2:length(x)]),gexp,method = "spearman")$p.value)
+  coef=apply(cpgs.meth,1,function(x) cor.test(as.numeric(x[2:length(x)]),gexp,method = "spearman")$estimate)
+  print(paste("#############:",k))
+  if(min(ps)>p.thres) { return(res) }
+
+  cis.cpgs=data.frame(Entrezid=gb$gene_entrezid,Symbol=gb$gene_id,
+                      cpgs=cpgs.meth$ID[which(ps<p.thres)],
+                        r=coef[which(ps<p.thres)],
+                        p=ps[which(ps<p.thres)])
+
+  bt=data.frame()
+  for(i in which(ps<p.thres)){
+        dt=data.frame(y=gexp,
+                        x=as.numeric(cpgs.meth[i,2:ncol(cpgs.meth)]))
+        l=lm(y~x,data=dt)
+        s=summary(l)
+        bt=rbind(bt,s$coefficient[2,])
+  }
+  colnames(bt)=c("beta","sd","t","p")
+  cis.cpgs=cbind(cis.cpgs,bt)
+  res=rbind(res,cis.cpgs)
+  res
+}
+
+
 Sys.time()
 cl <- makeCluster(15)
 clusterExport(cl,c("exp","gene.bed","cpg.bed","meth","cal_res"))
