@@ -1,0 +1,170 @@
+###堆叠柱状图
+setwd("./combine_result/mediation_analysis/covarities/plot/new")
+rm(list = ls())
+baseline_res <- read.table("./HA18+19_baseline.cis.mediation_result.txt", header = T)
+acute_res <- read.table("./HA18+19_acute.cis.mediation_result.txt", header = T)
+chronic_res <- read.table("./HA18+19_chronic.cis.mediation_result.txt", header = T)
+
+base <- as.data.frame(table(baseline_res$fdr <0.05))
+acute <- as.data.frame(table(acute_res$fdr < 0.05))
+chronic <- as.data.frame(table(chronic_res$fdr<0.05))
+
+draw_dat <- rbind(base, acute, chronic)
+draw_dat <- cbind(period=c(rep(c("Baseline","Acute","Chronic"),each=2)),draw_dat)
+colnames(draw_dat)[2] <- "sig"
+draw_dat$sig <- factor(draw_dat$sig, labels = c("non_sig","sig"))
+draw_dat$partion <- draw_dat$Freq / 3663
+write.table(draw_dat, "./significant_count.csv", row.names = F, quote = F, sep = ",")
+
+draw_dat <- read.table("./significant_count.csv", header = T, sep = ",")
+draw_dat$period <- factor(draw_dat$period, levels = c("Baseline","Acute","Chronic"))
+draw_dat$sig <- factor(draw_dat$sig, levels = c("non_sig","sig"))
+library(scales)
+library(ggplot2)
+draw_dat$percent <- scales::percent(draw_dat$partion, accuracy = 0.01)
+
+pdf("./significant_Mediation_percentage.pdf", width = 10, height = 8)
+p <- ggplot(draw_dat, aes(period, partion, fill=sig, order=sig))+
+  geom_bar(stat = "identity", width = 0.8, position = "fill", color="black")+
+  theme_bw()+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x="Period", y="Percentage", fill="sig")+
+  scale_fill_manual(values = c("#DFC286","#82B0D2"))+
+  # scale_x_discrete(labels=c("CC"=paste0("CC (",CC_number,")"),
+  #                           "CT"=paste0("CT (",CT_number,")"),
+  #                           "TT"=paste0("TT (",TT_number,")")))+
+  geom_text(aes(label = percent), size = 7, 
+            position = position_stack(vjust = 0.5), color = 'black', 
+            fontface = 'bold')+
+  ggtitle("Mediation Percentage of CpGs\n(N=3663)")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 22, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+print(p)
+dev.off()
+
+library(readr)
+base=read_table("./HA18+19_baseline.cis.mediation_result.txt")
+base=base[base$p2<0.05 & base$中介效应占比>0,]
+
+acute=read_table("./HA18+19_acute.cis.mediation_result.txt")
+acute=acute[acute$p2<0.05 & acute$中介效应占比>0,]
+
+chronic=read_table("./HA18+19_chronic.cis.mediation_result.txt")
+chronic=chronic[chronic$p2<0.05 & chronic$中介效应占比>0,]
+
+pd=data.frame(prot=c(base$中介效应占比,acute$中介效应占比,chronic$中介效应占比),
+              direct=c(base$直接效应,acute$直接效应,chronic$直接效应),
+              med=c(base$中介效应,acute$中介效应,chronic$中介效应),
+              tol=c(base$总效应,acute$总效应,chronic$总效应),
+              Periods=c(rep("Baseline",nrow(base)),
+                        rep("Acute",nrow(acute)),
+                        rep("Chronic",nrow(chronic))))
+
+pd$Periods=factor(pd$Periods,levels = unique(pd$Periods))
+quantile(pd$prot)
+#pd$rg=cut(pd$r2,breaks=quantile(pd$r2),include.lowest = T,right = T)
+pd$protg=cut(pd$prot,breaks=c(0,0.1,0.2,0.3,0.5,3))
+table(pd$protg)
+levels(pd$protg)=c("0-10%","10%-20%","20%-30%","30-50%",">50%")
+table(pd$protg)
+
+library(ggplot2)
+library(RColorBrewer)
+library(ggsci)
+library(ggpubr)
+
+pdf("Stat_meth_mediation.pdf",height = 4,width = 6)
+ggplot() +
+  geom_bar(data=pd,aes(protg,fill=Periods,stat = "count"),position = "dodge",width = 0.8)   +
+  geom_text(data=pd,aes(x=protg,y=..count..,group=Periods,label=..count..),
+            stat='count',vjust= -0.1,size=3,
+            position = position_dodge(width = .8)) +
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)]) +
+  theme_bw() +
+  #scale_y_continuous(expand = c(0.05,0.1),limits = c(0,350)) +
+  ylab("Counts") + xlab("Mediation proportion of CpGs") +
+  theme(#legend.position = "None",
+    axis.title = element_text(size=14),
+    strip.text = element_text(size=14) )
+
+dev.off()
+
+pd$direct=abs(pd$direct)
+pd$med=abs(pd$med)
+pd$tol=abs(pd$tol)
+library(tidyverse)
+
+ss=pd %>% 
+  group_by(Periods) %>%
+  summarise(m1=mean(direct),s1=sd(direct),
+            m2=mean(med),s2=sd(med),
+            m3=mean(tol),s3=sd(tol))
+
+pdf("Stat_meth_mediation.direct.pdf",height = 4,width = 5)
+ggplot(data=pd,aes(x=Periods,y=direct),) +
+  geom_violin(data=pd,aes(x=Periods,y=direct,fill=Periods)) +
+  geom_boxplot(fill="white",width = 0.2,outlier.colour = NA)   +
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)]) +
+  stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                        c("Acute","Chronic"),
+                                        c("Baseline","Chronic"))) +
+  geom_text(data=ss,aes(Periods,y=-0.1,
+                        label=paste(sprintf("%.3f",m1),sprintf("%.3f",s1),sep="±")),
+            size=3,hjust= 0.5) +
+  theme_bw() +
+  scale_y_continuous(expand = c(0.05,0.05)) +
+  ylab("Direct effect") + xlab("") +
+  theme(legend.position = "None",
+        axis.text.x = element_text(size=12),
+        axis.title = element_text(size=14))
+dev.off()
+
+###########
+pdf("Stat_meth_mediation.med.pdf",height = 4,width = 5)
+ggplot(data=pd,aes(x=Periods,y=med),) +
+  geom_violin(data=pd,aes(x=Periods,y=med,fill=Periods)) +
+  geom_boxplot(fill="white",width = 0.2,outlier.colour = NA)   +
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)]) +
+  stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                        c("Acute","Chronic"),
+                                        c("Baseline","Chronic"))) +
+  geom_text(data=ss,aes(Periods,y= -0.05,
+                        label=paste(sprintf("%.3f",m2),sprintf("%.3f",s2),sep="±")),
+            size=3,hjust= 0.5) +
+  theme_bw() +
+  scale_y_continuous(expand = c(0.05,0.05)) +
+  ylab("Mediation effect") + xlab("") +
+  theme(legend.position = "None",
+        axis.text.x = element_text(size=12),
+        axis.title = element_text(size=14))
+dev.off()
+
+#########
+pdf("Stat_meth_mediation.tol.pdf",height = 3,width = 4)
+ggplot(data=pd,aes(x=Periods,y=tol),) +
+  geom_violin(data=pd,aes(x=Periods,y=tol,fill=Periods)) +
+  geom_boxplot(fill="white",width = 0.2,outlier.colour = NA)   +
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)]) +
+  stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                        c("Acute","Chronic"),
+                                        c("Baseline","Chronic"))) +
+  geom_text(data=ss,aes(Periods,y=-0.05,
+                        label=paste(sprintf("%.3f",m3),sprintf("%.3f",s3),sep="±")),
+            size=3,hjust= 0.5) +
+  theme_bw() +
+  scale_y_continuous(expand = c(0.05,0.05)) +
+  ylab("Total effect") + xlab("") +
+  theme(legend.position = "None",
+        axis.text.x = element_text(size=12),
+        axis.title = element_text(size=14))
+dev.off()
