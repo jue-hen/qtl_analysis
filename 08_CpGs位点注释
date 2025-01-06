@@ -1,0 +1,128 @@
+####CpGs位点注释
+card=pal_npg("nrc")(10)[c(3,1,2)]
+
+venn.plot=venn.diagram(x=list(
+  `Baseline\nCis-meCpGs`=unique(base$gene),
+  `Acute\nCis-meCpGs`=unique(acute$gene),
+  `Chronic\nCis-meCpGs`=unique(chronic$gene)),
+  "./plot/CpGs_annotation/meQTL_meCpGs.Cis_Venn.tiff", height = 900, width = 900,
+  resolution = 300,
+  imagetype = "tiff",
+  alpha=0.8,
+  fill=card,
+  #label.col=c("darkred","white","darkblue","white","white","white","darkgreen"),
+  cex=0.8,
+  fontfamily="serif",
+  fontface="bold",
+  cat.default.pos="text",
+  cat.col="white",
+  cat.cex=0.8,
+  cat.fontsize="bold",
+  cat.dist=c(0.1,0.1,-0.08),
+  cat.pos=c(15,-15,0))
+print(venn.plot)
+
+library(ChAMP)
+library(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
+ann850k <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
+cpg <- as.data.frame(ann850k)
+write.table(cpg, "../../../pos_info/cpg_pos_info_850K.txt", quote = F, sep = "\t")
+cpgs_info <- cpg
+cpgs_info$Relation_to_Island <- gsub("N_","", cpgs_info$Relation_to_Island)
+cpgs_info$Relation_to_Island <- gsub("S_","", cpgs_info$Relation_to_Island)
+##cis
+acute_cis <- acute
+table(acute_cis$gene %in% rownames(cpg))
+acute <- cpgs_info[unique(acute_cis$gene),]
+acu_info <- as.numeric(table(acute$Relation_to_Island))
+acu_dat <- data.frame(period=c(rep("Acute",4)),
+                      type=c("Island","OpenSea","Shelf","Shore"),
+                      number=acu_info)
+
+baseline_cis <- base
+baseline <- cpgs_info[unique(baseline_cis$gene),]
+bas_info <- as.numeric(table(baseline$Relation_to_Island))
+bas_dat <- data.frame(period=c(rep("Baseline",4)),
+                      type=c("Island","OpenSea","Shelf","Shore"),
+                      number=bas_info)
+
+chronic_cis <- chronic
+chronic <- cpgs_info[unique(chronic_cis$gene),]
+chr_info <- as.numeric(table(chronic$Relation_to_Island))
+chr_dat <- data.frame(period=c(rep("Chronic",4)),
+                      type=c("Island","OpenSea","Shelf","Shore"),
+                      number=chr_info)
+
+dat <- rbind(bas_dat, acu_dat, chr_dat)
+dat$period <- factor(dat$period, levels = c("Baseline","Acute","Chronic"))
+
+pdf("./plot/CpGs_annotation/Distribution_of_cpgs_in_cis-meQTL_pair(cpg_island).pdf", width = 10, height = 6)
+p <- ggplot(dat, aes(x = period, y = number, fill = type))+
+  geom_bar(stat = "identity", width = 0.5)+
+  theme_classic()+
+  labs(x = 'Period', y = "Numbers")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18, face = "bold"),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))+
+  geom_text(aes(label = number), size = 4, 
+            position = position_stack(vjust = 0.5), color = 'black', 
+            fontface = 'bold')
+print(p)
+dev.off()
+
+#cpgs 在全基因组区域的富集
+#cis
+library(stringr)
+table(acute_cis$gene %in% rownames(cpgs_info))
+acute <- cpgs_info[unique(acute_cis$gene),]
+acu_info <- as.numeric(table(str_split(acute$UCSC_RefGene_Group,";", simplify = T)[,1]))
+acu_dat <- data.frame(period=c(rep("Acute",8)),
+                      type=c("IGR","1stExon","3'UTR","5'UTR","Body","ExonBnd","TSS1500","TSS200"),
+                      number=acu_info)
+
+baseline <- cpgs_info[unique(baseline_cis$gene),]
+baseline_info <- as.numeric(table(str_split(baseline$UCSC_RefGene_Group,";", simplify = T)[,1]))
+baseline_dat <- data.frame(period=c(rep("Baseline",8)),
+                           type=c("IGR","1stExon","3'UTR","5'UTR","Body","ExonBnd","TSS1500","TSS200"),
+                           number=baseline_info)
+
+chronic <- cpgs_info[unique(chronic_cis$gene),]
+chronic_info <- as.numeric(table(str_split(chronic$UCSC_RefGene_Group,";", simplify = T)[,1]))
+chronic_dat <- data.frame(period=c(rep("Chronic",8)),
+                          type=c("IGR","1stExon","3'UTR","5'UTR","Body","ExonBnd","TSS1500","TSS200"),
+                          number=chronic_info)
+dat <- rbind(baseline_dat, acu_dat, chronic_dat)
+dat$period <- factor(dat$period, levels = c("Baseline","Acute","Chronic"))
+
+pdf("./plot/CpGs_annotation/Distribution_of_cpgs_in_cis-meQTL_pair(whole_genome).pdf", width = 12, height = 10)
+p <- ggplot(dat, aes(x = period, y = number, fill = type))+
+  geom_bar(stat = "identity", width = 0.5)+
+  theme_classic()+
+  labs(x = 'Period', y = "Numbers")+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  size = 24, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18, face = "bold"),
+        legend.key.height = unit(2,"lines"),
+        legend.position = "right",
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+        axis.title = element_text(size = 22, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))+
+  geom_text(aes(label = number), size = 5, 
+            position = position_stack(vjust = 0.5), color = 'black', 
+            fontface = 'bold')
+print(p)
+dev.off()
+
