@@ -1,0 +1,38 @@
+pd=data.frame(r2=c(base$r*base$r, acute$r*acute$r, chronic$r*chronic$r),
+              Periods=c(rep("Baseline",nrow(base)),
+                        rep("Acute", nrow(acute)),
+                        rep("Chronic", nrow(chronic))))
+pd$Periods=factor(pd$Periods, levels = unique(pd$Periods))
+library(ggpubr)
+library(gghalves)
+library(tidyverse)
+ss=pd %>% 
+  group_by(Periods) %>% 
+  summarise(m=mean(r2), s=sd(r2))
+
+pdf("./plot/Stat_meQTL_boxplot_r2.pdf", height = 10, width = 10)
+ggplot(data = pd, aes(x=Periods, y=r2))+
+  geom_violin(data = pd, aes(x=Periods, y=r2, fill=Periods))+
+  geom_boxplot(fill="white", width=0.2, outlier.colour = NA)+
+  scale_fill_manual(values = pal_npg("nrc")(10)[c(3,1,2)])+
+  stat_compare_means(comparisons = list(c("Baseline","Acute"),
+                                        c("Acute","Chronic"),
+                                        c("Baseline","Chronic")), size=10)+
+  geom_text(data = ss,aes(Periods, y=0.05,
+                          label=paste(sprintf("%.3f",m), sprintf("%.3f",s), sep = "±")),
+            size=8, hjust=0.5)+
+  theme_classic()+
+  #scale_y_continuous(expand = c(0.01,0.05))+
+  ylab("Rsquare of meQTL")+xlab("")+
+  theme(plot.title = element_text(hjust = 0.5,size = 22, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.position = "none",
+        legend.key.height = unit(2,"lines"),
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA),
+        axis.title = element_text(size = 24, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+dev.off()
