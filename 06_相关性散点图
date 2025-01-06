@@ -1,0 +1,86 @@
+cis=unique(c(base$pair, acute$pair, chronic$pair))
+length(cis)
+
+
+base.raw=read_csv("./old_version/Baseline_eqtm_results.csv")
+acute.raw=read_csv("./old_version/Acute_eqtm_results.csv")
+chronic.raw=read_csv("./old_version/Chronic_eqtm_results.csv")
+
+
+base.raw$pair=paste(base.raw$cpgs, base.raw$Symbol)
+table(cis %in% base.raw$pair)
+
+acute.raw$pair=paste(acute.raw$cpgs, acute.raw$Symbol)
+table(cis %in% acute.raw$pair)
+
+chronic.raw$pair=paste(chronic.raw$cpgs, chronic.raw$Symbol)
+table(cis %in% chronic.raw$pair)
+
+
+base.raw1=base.raw[match(cis,base.raw$pair),]
+acute.raw1=acute.raw[match(cis, acute.raw$pair),]
+chronic.raw1=chronic.raw[match(cis, chronic.raw$pair),]
+
+###########
+pd=data.frame(snps=base.raw1$cpgs,
+              genes=base.raw1$Symbol,
+              base=base.raw1$beta,
+              acute=acute.raw1$beta, 
+              chronic=chronic.raw1$beta,
+              r1=base.raw1$r * base.raw1$r,
+              r2=acute.raw1$r * acute.raw1$r,
+              r3=chronic.raw1$r * chronic.raw1$r)
+#pd_sub <- na.omit(pd)
+
+pd$ty=rep("Others", nrow(pd))
+pd$ty[cis %in% paste(acute$cpgs, acute$Symbol) & !(cis %in% paste(base$cpgs, base$Symbol))]="Acute induced"
+pd$ty1=rep("Others", nrow(pd))
+pd$ty1[cis %in% paste(chronic$cpgs, chronic$Symbol) & !(cis %in% paste(base$cpgs, base$Symbol))]="Chronic induced"
+library(ggthemes)
+
+pd1=pd[cis %in% c(paste(acute$cpgs,acute$Symbol), paste(base$cpgs, base$Symbol)),]
+dim(pd1)
+
+pd2=pd[cis %in% c(paste(chronic$cpgs, chronic$Symbol), paste(chronic$cpgs, chronic$Symbol)),]
+dim(pd2)
+
+pdf("./old_version/plot/Stat.eQTM.acute.beta.pdf", height = 3, width = 4)
+ggplot(pd, aes(base, acute))+
+  geom_point(aes(color=ty), size=1)+
+  geom_segment(x=1, y=1, xend=-1,yend=-1, linetype="dashed", color="black", size=0.2)+
+  geom_hline(yintercept = 0, linetype="dashed",color="black",size=0.5)+
+  geom_vline(xintercept = 0, linetype="dashed", color="black", size=0.5)+
+  theme_few()+
+  scale_color_npg()+
+  scale_x_continuous(limits = c(-1,1))+
+  scale_y_continuous(limits = c(-1,1))+
+  stat_cor(method = "spearman",
+           output.type = "text",
+           aes(label=paste(..rr.label.., "N=8446", sep = "\n")))+
+  ylab("eQTM effect size (Acute)")+
+  xlab("eQTM effect size (Baseline)")+
+  theme(legend.position = c(0.75,0.2),
+        legend.title = element_blank(),
+        axis.title = element_text(size = 12))
+dev.off()
+
+#############
+pdf("./old_version/plot/Stat.eQTM.chronic.beta.pdf", height = 3, width = 4)
+ggplot(pd, aes(base, chronic))+
+  geom_point(aes(color=ty), size=1)+
+  geom_segment(x=1, y=1, xend=-1,yend=-1, linetype="dashed", color="black", size=0.2)+
+  geom_hline(yintercept = 0, linetype="dashed",color="black",size=0.5)+
+  geom_vline(xintercept = 0, linetype="dashed", color="black", size=0.5)+
+  theme_few()+
+  scale_color_npg()+
+  scale_x_continuous(limits = c(-1,1))+
+  scale_y_continuous(limits = c(-1,1))+
+  stat_cor(method = "spearman",
+           output.type = "text",
+           aes(label=paste(..rr.label.., "N=4908", sep = "\n")))+
+  ylab("eQTM effect size (Chronic)")+
+  xlab("eQTM effect size (Baseline)")+
+  theme(legend.position = c(0.75,0.2),
+        legend.title = element_blank(),
+        axis.title = element_text(size = 12))
+dev.off()
