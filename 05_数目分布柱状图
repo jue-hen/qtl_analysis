@@ -1,0 +1,35 @@
+pd=data.frame(r2=c(base$r * base$r, acute$r * acute$r, chronic$r * chronic$r),
+              Periods=c(rep("Baseline", nrow(base)),
+                        rep("Acute", nrow(acute)),
+                        rep("Chronic", nrow(chronic))))
+pd$Periods=factor(pd$Periods, levels = unique(pd$Periods))
+quantile(pd$r2)
+pd$rg=cut(pd$r2, breaks = c(0,0.1,0.2,1))
+table(pd$rg)
+
+library(ggplot2)
+pdf("./old_version/plot/Stat_eQTM_R2.pdf", height = 10, width = 15)
+ggplot()+
+  geom_bar(data=pd, aes(rg,fill=Periods), stat="count", position="dodge", width=0.8)+
+  scale_y_continuous(expand=c(0,0), limits = c(0,7800))+
+  labs(x="", y="Numbers of people")+
+  geom_text(data=pd, aes(x=rg, y=..count.., group=Periods, label=..count..),
+            stat='count', vjust=-0.1, size=8,
+            position=position_dodge(width=0.8))+
+  scale_fill_manual(values=pal_npg("nrc")(10)[c(3,1,2)])+
+  theme_classic()+
+  ylab("Numbers of eQTM")+
+  xlab("Beta value of eQTM")+
+  theme(plot.title = element_text(hjust = 0.5,size = 22, face = "bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18),
+        legend.position = c(.8,.8),
+        legend.key.height = unit(2,"lines"),
+        plot.margin = margin(0.5, 2.5, 0.5, 2.5, unit = "cm"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA),
+        axis.title = element_text(size = 24, face = 'bold'),
+        axis.text = element_text(size = 18, face = 'bold'))
+dev.off()
+
