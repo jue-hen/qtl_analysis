@@ -1,0 +1,102 @@
+library(grid)
+library(genomation)
+library(GenomicRanges)
+
+##eQTM analysis
+##gene expression
+baseline_gene.info <- read.table("./HA18_19.baseline.gene.expression.batch_corrected.txt",
+                              header = T, sep = "\t")
+length(baseline_gene.info$genes)
+length(unique(baseline_gene.info$genes))
+dim(baseline_gene.info)
+##methylation 
+library(readr)
+meth <- read_delim("./HA18_19.baseline.meth.beta.batch_corrected.txt",
+                   col_names = T, delim = "\t")
+eQTM.cpgs=read.table("/home/xkl/eQTM/combine/result/batch_effect_corrected/eQTM.cpgs.txt")
+meth=meth[which(meth$cpgs %in% eQTM.cpgs$V1),]
+
+###gene_pos info
+
+#########
+library(clusterProfiler)
+library(org.Hs.eg.db)
+gene.info <- bitr(baseline_gene.info$genes,
+                  fromType = "SYMBOL",
+                  toType = "ENTREZID",
+                  OrgDb = "org.Hs.eg.db")
+library(biomaRt)
+baseline_gene.info <- baseline_gene.info[match(gene.info$SYMBOL, baseline_gene.info$genes),]
+table(baseline_gene.info$genes == gene.info$SYMBOL)
+length(baseline_gene.info$genes)
+unique(length(baseline_gene.info$genes))
+gene_pos <- read.table("./gene_pos.txt",
+                       header = T, sep = "\t")
+inter=intersect(gene.info$SYMBOL,gene_pos$gene_id)
+gene_trans <- gene_pos[match(inter, gene_pos$gene_id),]
+gene.info=gene.info[match(inter,gene.info$SYMBOL),]
+table(gene_trans$gene_id == gene.info$SYMBOL)
+
+gene.bed=gene.bed[which(!is.na(gene.bed$gene_entrezid)),]
+table(gene.bed$gene_id == gene.info$SYMBOL)
+length(gene.bed$gene_entrezid)
+length(unique(gene.bed$gene_entrezid))
+
+table(baseline_gene.info$genes == gene.bed$gene_id)
+#gene.bed$chromosome_name=paste("chr",gene.bed$chromosome_name,sep="")
+dim(gene.bed)
+colnames(gene.bed)[1:3]=c("chrom","start","end")
+gene.bed$chrom <- paste0("chr",gene.bed$chrom)
+gene.bed=na.omit(gene.bed)
+gene.bed=as(gene.bed, "GRanges")
+
+library(GenomeInfoDb)
+library(GenomicRanges)
+##cpg_pos
+anno <- read.table("./cpg_pos_info_850K.txt",header = T, sep = "\t")
+colnames(anno)
+cpg.anno=anno[,c(2,3,3,1)]
+colnames(cpg.anno)[4] <- "IlmnID"
+cpg.anno=cpg.anno[match(meth$cpgs,cpg.anno$IlmnID),]
+colnames(cpg.anno)[1:3]=c("chrom","start","end")
+cpg.anno=na.omit(cpg.anno)
+cpg.bed=as(cpg.anno, "GRanges")
+
+##intersect people
+int_peo <- intersect(colnames(baseline_gene.info), colnames(meth))
+print(paste("baseline人数",length(int_peo),sep = ": "))
+
+baseline_gene.info=baseline_gene.info[match(inter,baseline_gene.info$gene),]
+rownames(baseline_gene.info) <- gene.bed$gene_entrezid
+baseline_gene.info <- baseline_gene.info[,int_peo]
+meth <- as.data.frame(meth)
+meth <- cbind(ID=meth[,1], meth[,int_peo])
+
+library(foreach)
+library(iterators)
+library(parallel)
+library(doParallel)
+exp <- baseline_gene.info
+#k=1
+cal_number=function(k){
+  num=data.frame()
+  g=gene.bed$gene_id[k]
+  gb=gene.bed[k,]
+  idx=gb$gene_entrezid
+  gexp=as.numeric(exp[rownames(exp)==idx,])
+  cpgs.overlapped=subsetByOverlaps(cpg.bed,gb,maxgap = 1000000)
+
+  cpgs.meth=meth[meth$ID %in% cpgs.overlapped$IlmnID,]
+  ss=data.frame(genes=g,num=nrow(cpgs.meth))
+  num=rbind(num,ss)
+  num
+}
+Sys.time()
+cl <- makeCluster(15)
+clusterExport(cl,c("exp","gene.bed","cpg.bed","meth","cal_number"))
+result_pair = parLapply(cl,1:length(gene.bed),cal_number)
+stopCluster(cl)
+Sys.time()
+save(result_pair,file="./result_pair.r")
+result=data.table::rbindlist(result_pair)
+write.table(result,"all_pair_in_eQTM.txt", row.names=F, quote=F, sep="\t")
