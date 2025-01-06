@@ -1,0 +1,82 @@
+###snp 在基因组上的分布分析
+##venn plots
+library(grid)
+library(futile.logger)
+library(VennDiagram)
+library(RColorBrewer)
+library(ggsci)
+card=pal_npg("nrc")(10)[c(3,1,2)]
+
+venn.plot=venn.diagram(x=list(
+  `Baseline\nCis-meSNPs`=unique(base$snps),
+  `Acute\nCis-meSNPs`=unique(acute$snps),
+  `Chronic\nCis-meSNPs`=unique(chronic$snps)),
+  "./plot/snps_annotation/meQTL_meSNPs.Cis_Venn.tiff", height = 900, width = 900,
+  resolution = 300,
+  imagetype = "tiff",
+  alpha=0.8,
+  fill=card,
+  #label.col=c("darkred","white","darkblue","white","white","white","darkgreen"),
+  cex=0.8,
+  fontfamily="serif",
+  fontface="bold",
+  cat.default.pos="text",
+  cat.col="white",
+  cat.cex=0.8,
+  cat.fontsize="bold",
+  cat.dist=c(0.1,0.1,-0.08),
+  cat.pos=c(15,-15,0))
+print(venn.plot)
+
+library(stringr)
+bed_file_create <- function(base){
+  base_snp <- str_split(unique(base$snps), "_", simplify = T)
+  base_snp <- as.data.frame(base_snp[,c(1,2)])
+  colnames(base_snp) <- c("chr","left")
+  base_snp$chr <- paste0("chr",base_snp$chr)
+  base_snp$left <- as.numeric(base_snp$left)
+  base_snp <- cbind(base_snp, right=(base_snp$left+c(rep(1,nrow(base_snp)))))
+  return(base_snp)
+}
+
+base_snp <- bed_file_create(base)
+acute_snp <- bed_file_create(acute)
+chronic_snp <- bed_file_create(chronic)
+
+library(ChIPseeker)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+###base
+base_GR <- GRanges(seqnames = base_snp[,"chr"], IRanges(base_snp[,"left"], base_snp[,"right"]))
+base_peakAnno <- annotatePeak(base_GR, tssRegion = c(-1000,1000),
+                              TxDb = TxDb.Hsapiens.UCSC.hg19.knownGene,
+                              annoDb = "org.Hs.eg.db")
+pdf("./plot/snps_annotation/base_snp_annotation.pdf", height = 8, width = 8)
+plotAnnoPie(base_peakAnno)
+dev.off()
+
+##acute
+acute_GR <- GRanges(seqnames = acute_snp[,"chr"], IRanges(acute_snp[,"left"], acute_snp[,"right"]))
+acute_peakAnno <- annotatePeak(acute_GR, tssRegion = c(-1000,1000),
+                               TxDb = TxDb.Hsapiens.UCSC.hg19.knownGene,
+                               annoDb = "org.Hs.eg.db")
+pdf("./plot/snps_annotation/acute_snp_annotation.pdf", height = 8, width = 8)
+plotAnnoPie(acute_peakAnno)
+dev.off()
+
+###chronic
+chronic_GR <- GRanges(seqnames = chronic_snp[,"chr"], IRanges(chronic_snp[,"left"], chronic_snp[,"right"]))
+chronic_peakAnno <- annotatePeak(chronic_GR, tssRegion = c(-1000,1000),
+                                 TxDb = TxDb.Hsapiens.UCSC.hg19.knownGene,
+                                 annoDb = "org.Hs.eg.db")
+pdf("./plot/snps_annotation/chronic_snp_annotation.pdf", height = 8, width = 8)
+plotAnnoPie(chronic_peakAnno)
+dev.off()
+
+####三个一起
+files <- list(Baseline=base_GR,Acute=acute_GR,Chronic=chronic_GR)
+peakAnnoList <- lapply(files, annotatePeak, TxDb= TxDb.Hsapiens.UCSC.hg19.knownGene, tssRegion=c(-1000,1000))
+pdf("./plot/snps_annotation/three_period_snp_annotation.pdf", height = 8, width = 8)
+plotAnnoBar(peakAnnoList)
+dev.off()
