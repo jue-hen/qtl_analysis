@@ -102,15 +102,20 @@ cal_res <- function(k){
   ps=apply(cpgs.meth,1,function(x) cor.test(as.numeric(x[2:length(x)]),gexp,method = "spearman")$p.value)
   coef=apply(cpgs.meth,1,function(x) cor.test(as.numeric(x[2:length(x)]),gexp,method = "spearman")$estimate)
   print(paste("#############:",k))
-  if(min(ps)>p.thres) { return(res) }
+  #if(min(ps)>p.thres) { return(res) }
+
+  #cis.cpgs=data.frame(Entrezid=gb$gene_entrezid,Symbol=gb$gene_id,
+  #                     cpgs=cpgs.meth$ID[which(ps<p.thres)],
+  #                      r=coef[which(ps<p.thres)],
+  #                      p=ps[which(ps<p.thres)])
 
   cis.cpgs=data.frame(Entrezid=gb$gene_entrezid,Symbol=gb$gene_id,
-                      cpgs=cpgs.meth$ID[which(ps<p.thres)],
-                        r=coef[which(ps<p.thres)],
-                        p=ps[which(ps<p.thres)])
+                      cpgs=cpgs.meth$ID,
+                        r=coef,
+                        p=ps)
 
   bt=data.frame()
-  for(i in which(ps<p.thres)){
+  for(i in 1:length(ps)){  ##which(ps<p.thres)
         dt=data.frame(y=gexp,
                         x=as.numeric(cpgs.meth[i,2:ncol(cpgs.meth)]))
         l=lm(y~x,data=dt)
